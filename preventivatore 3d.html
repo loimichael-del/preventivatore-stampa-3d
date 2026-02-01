@@ -1,0 +1,1035 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Preventivatore Stampa 3D — Multi-articolo + Gruppi + PDF</title>
+  <meta http-equiv="refresh" content="0; url=./index.html" />
+
+  <style>
+    :root{
+      --b:#e5e7eb; --t:#111827; --mut:#6b7280;
+      --bg:#fafafa; --card:#ffffff; --soft:#f8fafc;
+      --radius:14px;
+    }
+    *{ box-sizing:border-box; }
+    body{ font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin:0; color:var(--t); background:var(--bg); }
+    header{
+      padding:14px 18px; border-bottom:1px solid var(--b);
+      background:var(--card); position:sticky; top:0; z-index:5;
+    }
+    header h1{ margin:0; font-size:16px; }
+    header p{ margin:4px 0 0; color:var(--mut); font-size:12px; }
+
+    main{
+      display:grid; grid-template-columns: 420px 1fr; gap:14px;
+      padding:14px; max-width: 1280px; margin:0 auto;
+    }
+    @media (max-width: 980px){ main{ grid-template-columns: 1fr; } }
+
+    .card{
+      background:var(--card); border:1px solid var(--b);
+      border-radius:var(--radius); padding:14px;
+    }
+    .card h2{ font-size:13px; margin:0 0 10px; }
+
+    .grid{ display:grid; gap:10px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .grid2{ display:grid; gap:10px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    @media (max-width: 980px){ .grid, .grid2{ grid-template-columns: 1fr; } }
+
+    .field{ display:flex; flex-direction:column; gap:6px; }
+    label{ font-size:12px; color:var(--mut); }
+    input, select{
+      width:100%;
+      height:38px;
+      padding:8px 10px;
+      border:1px solid var(--b);
+      border-radius:12px;
+      font-size:13px;
+      background:#fff;
+      outline:none;
+    }
+    input:disabled{ background:#f3f4f6; color:#6b7280; }
+
+    .actions{ display:flex; gap:10px; flex-wrap:wrap; margin-top:10px; }
+    button{
+      height:38px; padding:0 12px;
+      border:1px solid var(--b);
+      border-radius:12px;
+      background:white; cursor:pointer;
+      font-size:13px;
+    }
+    button.primary{ background:#111827; color:white; border-color:#111827; }
+
+    .note{ margin-top:10px; font-size:12px; color:var(--mut); line-height:1.45; }
+    .warn{ color:#b45309; }
+    .ok{ color:#059669; }
+    hr{ border:none; border-top:1px solid var(--b); margin:12px 0; }
+
+    .kpi{ display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px; }
+    @media (max-width: 980px){ .kpi{ grid-template-columns: 1fr; } }
+    .kpi .box{ border:1px solid var(--b); border-radius:var(--radius); padding:12px; background:var(--soft); }
+    .kpi .mut{ font-size:12px; color:var(--mut); }
+    .kpi .big{ font-size:20px; font-weight:800; margin-top:6px; }
+
+    table{ width:100%; border-collapse:collapse; }
+    td{ padding:9px 0; border-bottom:1px solid #f1f5f9; font-size:13px; }
+    td:last-child{ text-align:right; font-variant-numeric: tabular-nums; }
+
+    .item{
+      border:1px solid var(--b);
+      border-radius:var(--radius);
+      padding:12px;
+      margin:10px 0;
+      background:#fff;
+    }
+    .item-head{
+      display:flex; align-items:center; justify-content:space-between;
+      gap:10px; margin-bottom:10px;
+    }
+    .item-head b{ font-size:13px; }
+    .mini{ font-size:12px; color:var(--mut); }
+
+    .checkline{
+      display:flex; align-items:center; gap:10px;
+      height:38px; padding:0 10px;
+      border:1px solid var(--b);
+      border-radius:12px; background:#fff;
+    }
+    .checkline input[type="checkbox"]{ width:18px; height:18px; margin:0; }
+    .chip{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:6px 10px; border:1px solid var(--b);
+      border-radius:999px; background:var(--soft);
+      font-size:12px; color:var(--mut);
+    }
+
+    /* ===== PRINT / PDF ===== */
+    @media print{
+      header, main { display:none !important; }
+      #printArea{ display:block !important; }
+      body{ background:#fff; }
+    }
+    #printArea{
+      display:none;
+      padding:18px;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      color:#111827;
+    }
+    #printArea h1{ font-size:18px; margin:0 0 6px; }
+    #printArea .sub{ color:#6b7280; font-size:12px; margin-bottom:12px; }
+    #printArea .box{
+      border:1px solid #e5e7eb; border-radius:12px;
+      padding:12px; margin:12px 0;
+    }
+    #printArea table{ width:100%; border-collapse:collapse; }
+    #printArea th, #printArea td{
+      border-bottom:1px solid #eef2f7;
+      padding:8px 6px;
+      font-size:12px;
+      text-align:left;
+      vertical-align:top;
+    }
+    #printArea th{ background:#f8fafc; }
+    #printArea td.num{ text-align:right; font-variant-numeric: tabular-nums; }
+    #printArea .tot{ font-size:16px; font-weight:800; text-align:right; }
+  </style>
+</head>
+
+<body>
+<header>
+  <h1>Preventivatore Stampa 3D — Multi-articolo (Gruppi A/B/C) + PDF</h1>
+  <p>Tempi accettati: <b>1:30</b> oppure <b>1.30</b> (1h30) oppure <b>1,5</b> (1h30).</p>
+</header>
+
+<main>
+  <!-- LEFT -->
+  <section class="card">
+    <h2>Commessa</h2>
+    <div class="grid2">
+      <div class="field">
+        <label for="client">Cliente</label>
+        <input id="client" placeholder="Es. Mario Rossi" />
+      </div>
+      <div class="field">
+        <label for="setupMode">Fermo macchina</label>
+        <select id="setupMode">
+          <option value="ORDER">Una volta per commessa (consigliato)</option>
+          <option value="ITEM">Per articolo (ogni riga)</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="primary" id="addItem">+ Aggiungi articolo</button>
+      <button id="reset">Reset</button>
+      <button id="exportPdf">Esporta PDF</button>
+    </div>
+
+    <p class="note">
+      “Per commessa” = una sola mandata. “Per articolo” = lavorazioni separate.
+    </p>
+
+    <hr>
+
+    <h2>Costi base e regole</h2>
+    <div class="grid">
+      <div class="field">
+        <label>Costo materiale default (€/g)</label>
+        <input id="cfg_material" type="text" inputmode="decimal" />
+      </div>
+      <div class="field">
+        <label>Costo macchina (€/h)</label>
+        <input id="cfg_machine" type="text" inputmode="decimal" />
+      </div>
+      <div class="field">
+        <label>Costo progettazione (€/h)</label>
+        <input id="cfg_design" type="text" inputmode="decimal" />
+      </div>
+      <div class="field">
+        <label>Fermo macchina (€/job)</label>
+        <input id="cfg_setup" type="text" inputmode="decimal" />
+      </div>
+      <div class="field">
+        <label>Sconto serie (%)</label>
+        <input id="cfg_discount" type="text" inputmode="numeric" />
+      </div>
+      <div class="field">
+        <label>Soglia serie (pezzi)</label>
+        <input id="cfg_threshold" type="text" inputmode="numeric" />
+      </div>
+    </div>
+
+    <hr>
+
+    <h2>Gruppi A/B/C (rischio / complessità)</h2>
+    <p class="note" style="margin-top:0;">
+      I gruppi modificano: <b>stampa</b> (moltiplicatore), <b>design</b> (moltiplicatore), <b>margine</b> (%).
+    </p>
+
+    <div class="card" style="padding:12px; background:var(--soft); border-color:#eef2f7;">
+      <div class="grid">
+        <div class="field">
+          <label>Gruppo A — Moltiplicatore stampa</label>
+          <input id="gA_print" type="text" inputmode="decimal" />
+        </div>
+        <div class="field">
+          <label>Gruppo A — Moltiplicatore design</label>
+          <input id="gA_design" type="text" inputmode="decimal" />
+        </div>
+        <div class="field">
+          <label>Gruppo A — Margine (%)</label>
+          <input id="gA_margin" type="text" inputmode="numeric" />
+        </div>
+
+        <div class="field">
+          <label>Gruppo B — Moltiplicatore stampa</label>
+          <input id="gB_print" type="text" inputmode="decimal" />
+        </div>
+        <div class="field">
+          <label>Gruppo B — Moltiplicatore design</label>
+          <input id="gB_design" type="text" inputmode="decimal" />
+        </div>
+        <div class="field">
+          <label>Gruppo B — Margine (%)</label>
+          <input id="gB_margin" type="text" inputmode="numeric" />
+        </div>
+
+        <div class="field">
+          <label>Gruppo C — Moltiplicatore stampa</label>
+          <input id="gC_print" type="text" inputmode="decimal" />
+        </div>
+        <div class="field">
+          <label>Gruppo C — Moltiplicatore design</label>
+          <input id="gC_design" type="text" inputmode="decimal" />
+        </div>
+        <div class="field">
+          <label>Gruppo C — Margine (%)</label>
+          <input id="gC_margin" type="text" inputmode="numeric" />
+        </div>
+      </div>
+
+      <p class="note">
+        Consiglio base: A (1.00 / 0.80 / 20%) — B (1.10 / 1.00 / 25%) — C (1.25 / 1.30 / 35%)
+      </p>
+    </div>
+
+    <hr>
+
+    <h2>Tempi: come scriverli</h2>
+    <p class="note" style="margin-top:0;">
+      ✅ <b>H:MM</b> (es. <b>0:40</b>, <b>1:30</b>)<br>
+      ✅ <b>H.MM</b> o <b>H,MM</b> interpretato come ore+minuti (es. <b>1.30</b> = 1h30)<br>
+      ✅ <b>Ore decimali</b> (es. <b>0,67</b> ≈ 40 minuti)
+    </p>
+
+  </section>
+
+  <!-- RIGHT -->
+  <section>
+    <div class="card">
+      <h2>Articoli</h2>
+      <div id="items"></div>
+    </div>
+
+    <div class="card" style="margin-top:14px;">
+      <h2>Risultato commessa</h2>
+
+      <div class="kpi">
+        <div class="box">
+          <div class="mut">Totale finale</div>
+          <div class="big" id="total">€ 0,00</div>
+        </div>
+        <div class="box">
+          <div class="mut">Sintesi</div>
+          <div class="big" style="font-size:14px; font-weight:700;" id="noteKpi">—</div>
+        </div>
+      </div>
+
+      <table>
+        <tbody>
+          <tr><td>Totale materiale</td><td id="sumMat">€ 0,00</td></tr>
+          <tr><td>Totale stampa (con moltiplicatori gruppo)</td><td id="sumPrint">€ 0,00</td></tr>
+          <tr><td>Totale progettazioni (con moltiplicatori gruppo)</td><td id="sumDesign">€ 0,00</td></tr>
+          <tr><td><b>Sconto serie totale</b></td><td id="sumDiscount">€ 0,00</td></tr>
+          <tr><td>Fermo macchina applicato</td><td id="sumSetup">€ 0,00</td></tr>
+          <tr><td>Margine totale (somma per articolo)</td><td id="sumMargin">€ 0,00</td></tr>
+          <tr><td><b>Totale finale</b></td><td id="sumTotal"><b>€ 0,00</b></td></tr>
+        </tbody>
+      </table>
+
+      <div class="actions">
+        <button id="copy">Copia riepilogo</button>
+      </div>
+
+      <div class="note" id="note"></div>
+    </div>
+  </section>
+</main>
+
+<!-- ===== PRINT AREA (for PDF) ===== -->
+<section id="printArea">
+  <h1>Preventivo stampa 3D</h1>
+  <div class="sub" id="printMeta">—</div>
+
+  <div class="box">
+    <b>Riepilogo articoli</b>
+    <div style="height:8px"></div>
+    <table>
+      <thead>
+        <tr>
+          <th>Articolo</th>
+          <th>Gruppo</th>
+          <th class="num">Q.tà</th>
+          <th class="num">g/pezzo</th>
+          <th class="num">Stampa (h/pezzo)</th>
+          <th class="num">Design (h tot)</th>
+          <th class="num">Prezzo unit.</th>
+          <th class="num">Totale riga</th>
+        </tr>
+      </thead>
+      <tbody id="printItems"></tbody>
+    </table>
+  </div>
+
+  <div class="box">
+    <b>Totali</b>
+    <table>
+      <tbody>
+        <tr><td>Totale materiale</td><td class="num" id="p_sumMat">—</td></tr>
+        <tr><td>Totale stampa</td><td class="num" id="p_sumPrint">—</td></tr>
+        <tr><td>Totale design</td><td class="num" id="p_sumDesign">—</td></tr>
+        <tr><td>Sconto serie totale</td><td class="num" id="p_sumDiscount">—</td></tr>
+        <tr><td>Fermo macchina</td><td class="num" id="p_sumSetup">—</td></tr>
+        <tr><td>Margine totale</td><td class="num" id="p_sumMargin">—</td></tr>
+        <tr><td class="tot">TOTALE FINALE</td><td class="tot" id="p_total">—</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="sub" id="printFoot">Preventivo generato automaticamente.</div>
+</section>
+
+<script>
+/* ===========================
+   Utils
+=========================== */
+const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
+
+const num = (v, fallback=0) => {
+  if (v === null || v === undefined) return fallback;
+  if (typeof v === "string") {
+    v = v.trim().replace(/\s+/g, "");
+    v = v.replace(",", ".");
+  }
+  const n = Number(v);
+  return Number.isFinite(n) ? n : fallback;
+};
+
+const eur = (n) => new Intl.NumberFormat('it-IT', { style:'currency', currency:'EUR' }).format(round2(n));
+const uid = () => Math.random().toString(36).slice(2, 10);
+const escapeHtml = (s) => String(s ?? "")
+  .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
+  .replaceAll('"',"&quot;").replaceAll("'","&#039;");
+
+const fmtComma = (v) => String(v).replace(".", ",");
+
+const nowStr = () => {
+  const d = new Date();
+  const pad = (n)=> String(n).padStart(2,"0");
+  return `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
+
+/* ===========================
+   TIME PARSER (the important part)
+   Accept:
+   - "1:30" => 1.5
+   - "1.30" or "1,30" => 1h30 (minutes)  NOT 1.30 hours
+   - "0.40" => 0h40
+   - decimal hours: "0.67"
+=========================== */
+function parseHoursSmart(input, fallback=0) {
+  if (input === null || input === undefined) return fallback;
+  let s = String(input).trim();
+  if (!s) return fallback;
+
+  // normalize spaces
+  s = s.replace(/\s+/g, "");
+
+  // H:MM
+  if (s.includes(":")) {
+    const [hStr, mStr] = s.split(":");
+    const h = num(hStr, 0);
+    const m = num(mStr, 0);
+    if (m < 0 || m >= 60) return h; // se sbagli minuti, almeno non esplode
+    return h + (m / 60);
+  }
+
+  // H.MM or H,MM
+  // If there is one separator and the "minutes" part is 0..59 and has 2 digits => treat as minutes
+  const sepMatch = s.match(/^(\d+)[\.,](\d{1,2})$/);
+  if (sepMatch) {
+    const h = num(sepMatch[1], 0);
+    const mmStr = sepMatch[2];
+    const mm = num(mmStr, 0);
+
+    // If user typed 1.30 or 0.40 -> minutes style (00..59) with 2 digits
+    if (mmStr.length === 2 && mm >= 0 && mm <= 59) {
+      return h + (mm / 60);
+    }
+
+    // Else treat as decimal hours
+    return num(s, fallback);
+  }
+
+  // plain number -> decimal hours
+  return num(s, fallback);
+}
+
+/* ===========================
+   Core: quote item
+=========================== */
+function quoteItem(item, config) {
+  const qty = Math.max(1, Math.floor(num(item.qty, 1)));
+  const grams = Math.max(0, num(item.gramsPerPiece));
+  const printHours = Math.max(0, parseHoursSmart(item.printHoursPerPiece, 0)); // SMART
+  const groupKey = (item.group || "B").toUpperCase();
+  const group = config.groups[groupKey] || config.groups.B;
+
+  const hasDesign = item.hasDesign !== false;
+  const designHours = hasDesign ? Math.max(0, parseHoursSmart(item.designHours, 0)) : 0; // SMART
+
+  const materialEurPerGram = item.materialOverrideOn
+    ? Math.max(0, num(item.materialEurPerGram))
+    : Math.max(0, num(config.materialEurPerGram));
+
+  const machineEurPerHour = Math.max(0, num(config.machineEurPerHour));
+  const designEurPerHour = Math.max(0, num(config.designEurPerHour));
+
+  const seriesDiscountPct = Math.max(0, num(config.seriesDiscountPct));
+  const seriesThresholdQty = Math.max(1, Math.floor(num(config.seriesThresholdQty, 10)));
+
+  // Base costs
+  const materialCost = grams * materialEurPerGram * qty;
+
+  // Print: apply group factor to print portion
+  const printCostBase = printHours * machineEurPerHour * qty;
+  const printCost = printCostBase * Math.max(0, num(group.printFactor, 1));
+
+  // Design: depends only on hasDesign, then apply group factor
+  const designCostBase = hasDesign ? (designHours * designEurPerHour) : 0;
+  const designCost = designCostBase * Math.max(0, num(group.designFactor, 1));
+
+  const variableCosts = materialCost + printCost;
+
+  // Series discount applies to variableCosts
+  const isSeries = item.isSeries === true;
+  const discountApplied = isSeries && qty >= seriesThresholdQty;
+  const seriesDiscount = discountApplied ? variableCosts * seriesDiscountPct : 0;
+
+  const itemBase = (variableCosts - seriesDiscount) + designCost;
+
+  const marginPct = Math.max(0, num(group.marginPct, 0.25));
+  const itemMargin = itemBase * marginPct;
+
+  const itemTotal = itemBase + itemMargin;
+  const unitPrice = itemTotal / qty;
+
+  return {
+    qty,
+    grams,
+    printHours,
+    designHours,
+    groupKey,
+    materialCost,
+    printCostBase,
+    printCost,
+    designCostBase,
+    designCost,
+    variableCosts,
+    seriesDiscount,
+    discountApplied,
+    itemBase,
+    marginPct,
+    itemMargin,
+    itemTotal,
+    unitPrice,
+    materialRate: materialEurPerGram,
+    hasDesign,
+    isSeries
+  };
+}
+
+/* ===========================
+   Core: quote order
+=========================== */
+function quoteOrder(state) {
+  const cfg = state.config;
+  const setupFee = Math.max(0, num(cfg.machineSetupFee));
+  const setupMode = state.order.setupMode; // ORDER | ITEM
+
+  const itemQuotes = state.items.map(it => ({ id: it.id, raw: it, q: quoteItem(it, cfg) }));
+
+  const sumMat = itemQuotes.reduce((a,x)=> a + x.q.materialCost, 0);
+  const sumPrint = itemQuotes.reduce((a,x)=> a + x.q.printCost, 0);
+  const sumDesign = itemQuotes.reduce((a,x)=> a + x.q.designCost, 0);
+  const sumDiscount = itemQuotes.reduce((a,x)=> a + x.q.seriesDiscount, 0);
+  const sumMargin = itemQuotes.reduce((a,x)=> a + x.q.itemMargin, 0);
+  const sumItemsTotal = itemQuotes.reduce((a,x)=> a + x.q.itemTotal, 0);
+
+  const setupApplied = (setupMode === "ITEM") ? setupFee * state.items.length : setupFee;
+  const total = sumItemsTotal + setupApplied;
+
+  return {
+    itemQuotes,
+    sums: { sumMat, sumPrint, sumDesign, sumDiscount, sumMargin, setupApplied, total }
+  };
+}
+
+/* ===========================
+   State
+=========================== */
+const STORAGE_KEY = "preventivatore3d_multi_groups_pdf_v2";
+
+const DEFAULTS = {
+  order: { client: "", setupMode: "ORDER" },
+  config: {
+    materialEurPerGram: 0.15,
+    machineEurPerHour: 2,
+    designEurPerHour: 20,
+    machineSetupFee: 10,
+    seriesDiscountPct: 0.25,
+    seriesThresholdQty: 10,
+    groups: {
+      A: { printFactor: 1.00, designFactor: 0.80, marginPct: 0.20 },
+      B: { printFactor: 1.10, designFactor: 1.00, marginPct: 0.25 },
+      C: { printFactor: 1.25, designFactor: 1.30, marginPct: 0.35 }
+    }
+  },
+  items: [
+    {
+      id: uid(),
+      name: "Staffe porta",
+      group: "B",
+      qty: 4,
+      gramsPerPiece: 80,
+      printHoursPerPiece: "1:30",   // esempio
+      hasDesign: true,
+      designHours: "0:20",
+      isSeries: true,
+      materialOverrideOn: false,
+      materialEurPerGram: 0.15
+    }
+  ]
+};
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return structuredClone(DEFAULTS);
+    const parsed = JSON.parse(raw);
+    const s = {
+      order: { ...DEFAULTS.order, ...(parsed.order || {}) },
+      config: { ...DEFAULTS.config, ...(parsed.config || {}) },
+      items: Array.isArray(parsed.items) && parsed.items.length ? parsed.items : structuredClone(DEFAULTS.items)
+    };
+    s.config.groups = { ...DEFAULTS.config.groups, ...((parsed.config && parsed.config.groups) || {}) };
+    return s;
+  } catch {
+    return structuredClone(DEFAULTS);
+  }
+}
+function saveState(s){ localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); }
+
+let state = loadState();
+
+/* ===========================
+   DOM
+=========================== */
+const $ = (id) => document.getElementById(id);
+
+const ui = {
+  client: $("client"),
+  setupMode: $("setupMode"),
+  addItem: $("addItem"),
+  reset: $("reset"),
+  exportPdf: $("exportPdf"),
+  items: $("items"),
+  copy: $("copy"),
+
+  cfg_material: $("cfg_material"),
+  cfg_machine: $("cfg_machine"),
+  cfg_design: $("cfg_design"),
+  cfg_setup: $("cfg_setup"),
+  cfg_discount: $("cfg_discount"),
+  cfg_threshold: $("cfg_threshold"),
+
+  gA_print: $("gA_print"),
+  gA_design: $("gA_design"),
+  gA_margin: $("gA_margin"),
+  gB_print: $("gB_print"),
+  gB_design: $("gB_design"),
+  gB_margin: $("gB_margin"),
+  gC_print: $("gC_print"),
+  gC_design: $("gC_design"),
+  gC_margin: $("gC_margin"),
+
+  total: $("total"),
+  noteKpi: $("noteKpi"),
+  sumMat: $("sumMat"),
+  sumPrint: $("sumPrint"),
+  sumDesign: $("sumDesign"),
+  sumDiscount: $("sumDiscount"),
+  sumSetup: $("sumSetup"),
+  sumMargin: $("sumMargin"),
+  sumTotal: $("sumTotal"),
+  note: $("note"),
+
+  // print
+  printMeta: $("printMeta"),
+  printItems: $("printItems"),
+  p_sumMat: $("p_sumMat"),
+  p_sumPrint: $("p_sumPrint"),
+  p_sumDesign: $("p_sumDesign"),
+  p_sumDiscount: $("p_sumDiscount"),
+  p_sumSetup: $("p_sumSetup"),
+  p_sumMargin: $("p_sumMargin"),
+  p_total: $("p_total"),
+  printFoot: $("printFoot"),
+};
+
+function bindTop(){
+  ui.client.value = state.order.client;
+  ui.setupMode.value = state.order.setupMode;
+
+  ui.cfg_material.value = fmtComma(state.config.materialEurPerGram);
+  ui.cfg_machine.value = fmtComma(state.config.machineEurPerHour);
+  ui.cfg_design.value = fmtComma(state.config.designEurPerHour);
+  ui.cfg_setup.value = fmtComma(state.config.machineSetupFee);
+  ui.cfg_discount.value = String(Math.round(state.config.seriesDiscountPct * 100));
+  ui.cfg_threshold.value = String(state.config.seriesThresholdQty);
+
+  const g = state.config.groups;
+  ui.gA_print.value = fmtComma(g.A.printFactor);
+  ui.gA_design.value = fmtComma(g.A.designFactor);
+  ui.gA_margin.value = String(Math.round(g.A.marginPct * 100));
+
+  ui.gB_print.value = fmtComma(g.B.printFactor);
+  ui.gB_design.value = fmtComma(g.B.designFactor);
+  ui.gB_margin.value = String(Math.round(g.B.marginPct * 100));
+
+  ui.gC_print.value = fmtComma(g.C.printFactor);
+  ui.gC_design.value = fmtComma(g.C.designFactor);
+  ui.gC_margin.value = String(Math.round(g.C.marginPct * 100));
+}
+
+function readTop(){
+  state.order.client = ui.client.value.trim();
+  state.order.setupMode = ui.setupMode.value;
+
+  state.config.materialEurPerGram = num(ui.cfg_material.value);
+  state.config.machineEurPerHour = num(ui.cfg_machine.value);
+  state.config.designEurPerHour = num(ui.cfg_design.value);
+  state.config.machineSetupFee = num(ui.cfg_setup.value);
+  state.config.seriesDiscountPct = num(ui.cfg_discount.value) / 100;
+  state.config.seriesThresholdQty = Math.max(1, Math.floor(num(ui.cfg_threshold.value, 10)));
+
+  state.config.groups.A.printFactor = num(ui.gA_print.value, 1);
+  state.config.groups.A.designFactor = num(ui.gA_design.value, 1);
+  state.config.groups.A.marginPct = num(ui.gA_margin.value, 20) / 100;
+
+  state.config.groups.B.printFactor = num(ui.gB_print.value, 1);
+  state.config.groups.B.designFactor = num(ui.gB_design.value, 1);
+  state.config.groups.B.marginPct = num(ui.gB_margin.value, 25) / 100;
+
+  state.config.groups.C.printFactor = num(ui.gC_print.value, 1);
+  state.config.groups.C.designFactor = num(ui.gC_design.value, 1);
+  state.config.groups.C.marginPct = num(ui.gC_margin.value, 35) / 100;
+}
+
+function itemTemplate(it, idx){
+  const hasDesign = it.hasDesign !== false;
+
+  return `
+  <div class="item" data-id="${it.id}">
+    <div class="item-head">
+      <div>
+        <b>Articolo ${idx+1}</b> <span class="mini">(${it.id})</span>
+        <span class="chip">Gruppo <b>${escapeHtml((it.group||"B").toUpperCase())}</b></span>
+      </div>
+      <button type="button" data-act="remove">Rimuovi</button>
+    </div>
+
+    <div class="grid">
+      <div class="field" style="grid-column: span 2;">
+        <label>Nome articolo</label>
+        <input data-k="name" value="${escapeHtml(it.name)}" placeholder="Es. Staffe porta" />
+      </div>
+
+      <div class="field">
+        <label>Gruppo (A/B/C)</label>
+        <select data-k="group">
+          <option value="A" ${String(it.group).toUpperCase()==="A"?"selected":""}>A — semplice</option>
+          <option value="B" ${String(it.group).toUpperCase()==="B"?"selected":""}>B — standard</option>
+          <option value="C" ${String(it.group).toUpperCase()==="C"?"selected":""}>C — complesso</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>Quantità (pz)</label>
+        <input data-k="qty" type="text" inputmode="numeric" value="${it.qty}" />
+      </div>
+      <div class="field">
+        <label>Grammi per pezzo</label>
+        <input data-k="gramsPerPiece" type="text" inputmode="numeric" value="${it.gramsPerPiece}" />
+      </div>
+      <div class="field">
+        <label>Ore stampa per pezzo</label>
+        <input data-k="printHoursPerPiece" type="text" placeholder="Es. 0:40 / 1.30 / 0,67" value="${escapeHtml(it.printHoursPerPiece)}" />
+      </div>
+
+      <div class="field">
+        <label>Progettazione inclusa?</label>
+        <div class="checkline">
+          <input data-k="hasDesign" type="checkbox" ${hasDesign ? "checked" : ""} />
+          <span data-k-label="hasDesign">${hasDesign ? "SI" : "NO (file pronto)"}</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Ore progettazione (totali)</label>
+        <input data-k="designHours" type="text" placeholder="Es. 0:20 / 0.20 / 0,33"
+          value="${escapeHtml(it.designHours)}" ${hasDesign ? "" : "disabled"} />
+      </div>
+
+      <div class="field">
+        <label>Serie (sconto se ≥ soglia)</label>
+        <div class="checkline">
+          <input data-k="isSeries" type="checkbox" ${it.isSeries ? "checked" : ""} />
+          <span data-k-label="isSeries">${it.isSeries ? "SI" : "NO"}</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Materiale personalizzato</label>
+        <div class="checkline">
+          <input data-k="materialOverrideOn" type="checkbox" ${it.materialOverrideOn ? "checked" : ""} />
+          <span data-k-label="matOverride">${it.materialOverrideOn ? "ON" : "USA DEFAULT"}</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>€/g (se ON)</label>
+        <input data-k="materialEurPerGram" type="text" inputmode="decimal"
+          value="${fmtComma(it.materialEurPerGram)}" ${it.materialOverrideOn ? "" : "disabled"} />
+      </div>
+    </div>
+
+    <div class="note" data-out="rowResult"></div>
+  </div>`;
+}
+
+function renderItems(){
+  ui.items.innerHTML = state.items.map(itemTemplate).join("");
+}
+
+function readItemsFromDOM(){
+  const wrappers = [...ui.items.querySelectorAll(".item")];
+  state.items = wrappers.map(w=>{
+    const id = w.getAttribute("data-id");
+    const old = state.items.find(x=>x.id===id) || {};
+    const get = (k)=> w.querySelector(`[data-k="${k}"]`);
+    const hasDesign = get("hasDesign").checked;
+    const materialOverrideOn = get("materialOverrideOn").checked;
+
+    return {
+      ...old,
+      id,
+      name: get("name").value,
+      group: get("group").value,
+      qty: num(get("qty").value, 1),
+      gramsPerPiece: num(get("gramsPerPiece").value, 0),
+      // keep strings, parser will interpret
+      printHoursPerPiece: get("printHoursPerPiece").value.trim(),
+      hasDesign,
+      designHours: hasDesign ? get("designHours").value.trim() : "0:00",
+      isSeries: get("isSeries").checked,
+      materialOverrideOn,
+      materialEurPerGram: materialOverrideOn ? num(get("materialEurPerGram").value, state.config.materialEurPerGram) : state.config.materialEurPerGram
+    };
+  });
+}
+
+/* ===========================
+   Render (UI + fixes)
+=========================== */
+function render(){
+  const o = quoteOrder(state);
+  const s = o.sums;
+
+  ui.total.textContent = eur(s.total);
+  ui.noteKpi.textContent = `${state.items.length} articoli — setup ${state.order.setupMode==="ITEM" ? "per articolo" : "per commessa"}`;
+
+  ui.sumMat.textContent = eur(s.sumMat);
+  ui.sumPrint.textContent = eur(s.sumPrint);
+  ui.sumDesign.textContent = eur(s.sumDesign);
+  ui.sumDiscount.textContent = "- " + eur(s.sumDiscount);
+  ui.sumSetup.textContent = eur(s.setupApplied);
+  ui.sumMargin.textContent = eur(s.sumMargin);
+  ui.sumTotal.textContent = eur(s.total);
+
+  const anyDiscount = s.sumDiscount > 0;
+  ui.note.innerHTML = `
+    Cliente: <b>${escapeHtml(state.order.client || "—")}</b>.
+    ${anyDiscount ? `<span class="warn">Sconto serie applicato su almeno un articolo.</span>` : `Nessuno sconto serie applicato.`}
+    <br>
+    <span class="mini">Tip: scrivi ore come <b>1:30</b> o <b>1.30</b> (1h30), non 1,30 ore.</span>
+  `;
+
+  // per-item output + correct labels based on DOM
+  o.itemQuotes.forEach(x=>{
+    const wrap = ui.items.querySelector(`.item[data-id="${x.id}"]`);
+    if(!wrap) return;
+
+    const out = wrap.querySelector(`[data-out="rowResult"]`);
+    const q = x.q;
+    const raw = x.raw;
+
+    // Read directly from DOM to avoid stale text
+    const uiHasDesign = wrap.querySelector(`[data-k="hasDesign"]`)?.checked ?? (raw.hasDesign !== false);
+    const uiIsSeries = wrap.querySelector(`[data-k="isSeries"]`)?.checked ?? (raw.isSeries === true);
+    const uiMatOverride = wrap.querySelector(`[data-k="materialOverrideOn"]`)?.checked ?? (raw.materialOverrideOn === true);
+
+    // enable/disable
+    const inDesign = wrap.querySelector(`[data-k="designHours"]`);
+    const inMat = wrap.querySelector(`[data-k="materialEurPerGram"]`);
+    if(inDesign) inDesign.disabled = !uiHasDesign;
+    if(inMat) inMat.disabled = !uiMatOverride;
+
+    // update label texts
+    const lblDesign = wrap.querySelector(`[data-k-label="hasDesign"]`);
+    const lblSeries = wrap.querySelector(`[data-k-label="isSeries"]`);
+    const lblMat = wrap.querySelector(`[data-k-label="matOverride"]`);
+    if(lblDesign) lblDesign.textContent = uiHasDesign ? "SI" : "NO (file pronto)";
+    if(lblSeries) lblSeries.textContent = uiIsSeries ? "SI" : "NO";
+    if(lblMat) lblMat.textContent = uiMatOverride ? "ON" : "USA DEFAULT";
+
+    const g = state.config.groups[q.groupKey];
+
+    // warnings: "SI" but 0 hours
+    let extra = "";
+    if (uiHasDesign && q.designHours === 0) extra += ` <span class="warn">⚠ Design=SI ma ore=0 → costo design 0€.</span>`;
+    if (q.printHours === 0) extra += ` <span class="warn">⚠ Ore stampa = 0.</span>`;
+
+    out.innerHTML = `
+      <b>${escapeHtml(raw.name || "Articolo")}</b> —
+      <span class="chip">Gruppo <b>${q.groupKey}</b> (stampa×${fmtComma(g.printFactor)} · design×${fmtComma(g.designFactor)} · marg ${Math.round(g.marginPct*100)}%)</span>
+      <br>
+      Materiale: ${eur(q.materialCost)} — Stampa: ${eur(q.printCost)} — Design: ${eur(q.designCost)}
+      ${q.seriesDiscount > 0 ? ` — <span class="warn">Sconto: -${eur(q.seriesDiscount)}</span>` : ` — Sconto: ${eur(0)}`}
+      <br>
+      Prezzo unitario: <b>${eur(q.unitPrice)}</b> — Totale riga: <b>${eur(q.itemTotal)}</b>
+      <span class="mini"> (qty=${q.qty}, g/pezzo=${q.grams}, stampa=${round2(q.printHours)}h, design=${round2(q.designHours)}h)</span>
+      ${extra}
+    `;
+  });
+}
+
+function recalcAndSave(){
+  readTop();
+  readItemsFromDOM();
+  saveState(state);
+  render();
+}
+
+/* ===========================
+   PDF export (print)
+=========================== */
+function buildPrint() {
+  const o = quoteOrder(state);
+  const s = o.sums;
+
+  ui.printMeta.textContent =
+    `Cliente: ${state.order.client || "—"} — Data: ${nowStr()} — Setup: ${state.order.setupMode==="ITEM" ? "per articolo" : "per commessa"} — Articoli: ${state.items.length}`;
+
+  ui.printItems.innerHTML = o.itemQuotes.map(x=>{
+    const q = x.q;
+    const name = escapeHtml(x.raw.name || "Articolo");
+    const g = q.groupKey;
+    const qty = q.qty;
+    const grams = round2(q.grams);
+    const ph = round2(q.printHours);
+    const dh = round2(q.designHours);
+    return `
+      <tr>
+        <td>${name}</td>
+        <td>${g}</td>
+        <td class="num">${qty}</td>
+        <td class="num">${grams}</td>
+        <td class="num">${ph}</td>
+        <td class="num">${dh}</td>
+        <td class="num">${eur(q.unitPrice)}</td>
+        <td class="num">${eur(q.itemTotal)}</td>
+      </tr>
+    `;
+  }).join("");
+
+  ui.p_sumMat.textContent = eur(s.sumMat);
+  ui.p_sumPrint.textContent = eur(s.sumPrint);
+  ui.p_sumDesign.textContent = eur(s.sumDesign);
+  ui.p_sumDiscount.textContent = "- " + eur(s.sumDiscount);
+  ui.p_sumSetup.textContent = eur(s.setupApplied);
+  ui.p_sumMargin.textContent = eur(s.sumMargin);
+  ui.p_total.textContent = eur(s.total);
+
+  ui.printFoot.textContent = `Costi base: materiale ${fmtComma(state.config.materialEurPerGram)} €/g — macchina ${fmtComma(state.config.machineEurPerHour)} €/h — design ${fmtComma(state.config.designEurPerHour)} €/h — setup ${fmtComma(state.config.machineSetupFee)} € — sconto serie ${Math.round(state.config.seriesDiscountPct*100)}% (soglia ${state.config.seriesThresholdQty}).`;
+}
+
+/* ===========================
+   Events
+=========================== */
+ui.addItem.addEventListener("click", ()=>{
+  state.items.push({
+    id: uid(),
+    name: "Nuovo articolo",
+    group: "B",
+    qty: 1,
+    gramsPerPiece: 0,
+    printHoursPerPiece: "0:00",
+    hasDesign: true,
+    designHours: "0:00",
+    isSeries: false,
+    materialOverrideOn: false,
+    materialEurPerGram: state.config.materialEurPerGram
+  });
+  saveState(state);
+  renderItems();
+  render();
+});
+
+ui.reset.addEventListener("click", ()=>{
+  localStorage.removeItem(STORAGE_KEY);
+  state = structuredClone(DEFAULTS);
+  saveState(state);
+  bindTop();
+  renderItems();
+  render();
+});
+
+ui.exportPdf.addEventListener("click", ()=>{
+  // ensure latest values are in state
+  recalcAndSave();
+  buildPrint();
+  // Print dialog -> user can Save as PDF
+  window.print();
+});
+
+ui.copy.addEventListener("click", async ()=>{
+  const o = quoteOrder(state);
+  const s = o.sums;
+
+  const lines = [];
+  lines.push(`Preventivo stampa 3D — Cliente: ${state.order.client || "-"}`);
+  lines.push(`Data: ${nowStr()}`);
+  lines.push(`Setup: ${state.order.setupMode === "ITEM" ? "per articolo" : "per commessa"} (${round2(s.setupApplied)}€)`);
+  lines.push(`Articoli:`);
+
+  o.itemQuotes.forEach(x=>{
+    const q = x.q;
+    const name = x.raw.name || "Articolo";
+    lines.push(`- [${q.groupKey}] ${name}: qty ${q.qty}, unit ${round2(q.unitPrice)}€, riga ${round2(q.itemTotal)}€ (mat ${round2(q.materialCost)}€, stampa ${round2(q.printCost)}€, design ${round2(q.designCost)}€, sconto ${round2(q.seriesDiscount)}€, marg ${Math.round(q.marginPct*100)}%)`);
+  });
+
+  lines.push(`Totale materiale: ${round2(s.sumMat)}€`);
+  lines.push(`Totale stampa: ${round2(s.sumPrint)}€`);
+  lines.push(`Totale design: ${round2(s.sumDesign)}€`);
+  lines.push(`Sconto serie totale: ${round2(s.sumDiscount)}€`);
+  lines.push(`Margine totale: ${round2(s.sumMargin)}€`);
+  lines.push(`TOTALE FINALE: ${round2(s.total)}€`);
+
+  const text = lines.join("\n");
+  try{
+    await navigator.clipboard.writeText(text);
+    ui.note.innerHTML = `<span class="ok">Riepilogo copiato negli appunti.</span>`;
+  }catch{
+    ui.note.innerHTML = `<span class="warn">Copia automatica non disponibile. Copia manualmente:</span><pre style="white-space:pre-wrap">${text}</pre>`;
+  }
+});
+
+// Global listeners (top config)
+document.addEventListener("input", (e)=>{
+  if(e.target.matches("#client,#setupMode,#cfg_material,#cfg_machine,#cfg_design,#cfg_setup,#cfg_discount,#cfg_threshold,#gA_print,#gA_design,#gA_margin,#gB_print,#gB_design,#gB_margin,#gC_print,#gC_design,#gC_margin")){
+    recalcAndSave();
+  }
+});
+document.addEventListener("change", (e)=>{
+  if(e.target.matches("#client,#setupMode,#cfg_material,#cfg_machine,#cfg_design,#cfg_setup,#cfg_discount,#cfg_threshold,#gA_print,#gA_design,#gA_margin,#gB_print,#gB_design,#gB_margin,#gC_print,#gC_design,#gC_margin")){
+    recalcAndSave();
+  }
+});
+
+// Delegate item inputs
+ui.items.addEventListener("input", (e)=>{
+  if(e.target.matches("input,select")) recalcAndSave();
+});
+ui.items.addEventListener("change", (e)=>{
+  if(e.target.matches("input,select")) recalcAndSave();
+});
+ui.items.addEventListener("click", (e)=>{
+  const btn = e.target.closest("button[data-act]");
+  if(!btn) return;
+  const wrap = e.target.closest(".item");
+  const id = wrap.getAttribute("data-id");
+  state.items = state.items.filter(x=>x.id!==id);
+  saveState(state);
+  renderItems();
+  render();
+});
+
+// Init
+bindTop();
+renderItems();
+render();
+</script>
+</body>
+</html>

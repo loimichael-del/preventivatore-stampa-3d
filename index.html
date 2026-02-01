@@ -1,0 +1,633 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Preventivatore Stampa 3D — Multi-articolo + Gruppi + PDF</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+
+<body>
+<!-- ===== AUTH SCREEN ===== -->
+<section id="view-auth" class="view view-active view-auth">
+  <div class="auth-container">
+    <div class="auth-card">
+      <h1>Preventivatore Stampa 3D</h1>
+      <p>Gestisci i tuoi preventivi in cloud</p>
+      
+      <div id="authLoginForm" style="display: block;">
+        <h2>Accedi</h2>
+        <div class="field">
+          <label for="authEmail">Email</label>
+          <input id="authEmail" type="email" placeholder="tua@email.com" />
+        </div>
+        <div class="field">
+          <label for="authPassword">Password</label>
+          <input id="authPassword" type="password" placeholder="••••••••" />
+        </div>
+        <button id="authLoginBtn" class="primary">Accedi</button>
+        
+        <div class="divider">oppure</div>
+        
+        <button id="authGoogleBtn" class="btn-google">
+          <span>🔷</span> Accedi con Google
+        </button>
+        
+        <p style="text-align: center; margin-top: 16px; font-size: 14px;">
+          Non hai un account? 
+          <button id="authToggleRegister" style="background: none; border: none; color: var(--primary); cursor: pointer; text-decoration: underline;">Registrati</button>
+        </p>
+      </div>
+      
+      <div id="authRegisterForm" style="display: none;">
+        <h2>Registrazione</h2>
+        <div class="field">
+          <label for="regEmail">Email</label>
+          <input id="regEmail" type="email" placeholder="tua@email.com" />
+        </div>
+        <div class="field">
+          <label for="regPassword">Password</label>
+          <input id="regPassword" type="password" placeholder="••••••••" />
+        </div>
+        <div class="field">
+          <label for="regPassword2">Conferma password</label>
+          <input id="regPassword2" type="password" placeholder="••••••••" />
+        </div>
+        <div class="field">
+          <label for="regCompany">Azienda (opzionale)</label>
+          <input id="regCompany" type="text" placeholder="Nome azienda" />
+        </div>
+        <button id="authRegisterBtn" class="primary">Registrati</button>
+        
+        <p style="text-align: center; margin-top: 16px; font-size: 14px;">
+          Hai già un account?
+          <button id="authToggleLogin" style="background: none; border: none; color: var(--primary); cursor: pointer; text-decoration: underline;">Accedi</button>
+        </p>
+      </div>
+      
+      <div id="authError" style="color: var(--error, #f87171); margin-top: 12px; padding: 8px; border-radius: 4px; display: none; font-size: 14px;"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== MAIN APP ===== -->
+<section id="view-main-app" class="view view-main-app" style="display: none;">
+<header class="topbar">
+  <button id="openMenu" class="icon-btn" aria-label="Apri menu">☰</button>
+  <h1>Preventivatore Stampa 3D</h1>
+  <button id="logoutBtn" class="icon-btn" title="Esci" style="margin-left: auto;">⏻</button>
+</header>
+
+<div id="menuOverlay" class="menu-overlay" aria-hidden="true"></div>
+<nav id="sideMenu" class="side-menu" aria-hidden="true">
+  <div class="side-menu-head">
+    <div class="side-menu-title">Menu</div>
+    <button class="icon-btn" id="closeMenu" aria-label="Chiudi menu">✕</button>
+  </div>
+  <div class="side-menu-actions">
+    <button type="button" data-view="main">Commessa</button>
+    <button type="button" data-view="library">Libreria clienti</button>
+    <button type="button" data-view="items">Articoli</button>
+    <button type="button" data-view="report">Report periodo</button>
+    <button type="button" data-view="account">Impostazioni</button>
+  </div>
+</nav>
+
+<main>
+  <section id="view-main" class="view view-active view-main">
+  <!-- LEFT -->
+  <section class="card left-panel">
+    <h2>Commessa</h2>
+    <div class="grid2">
+      <div class="field">
+        <label for="client">Cliente</label>
+        <input id="client" placeholder="Es. Mario Rossi" />
+      </div>
+      <div class="field">
+        <label for="setupMode">Fermo macchina</label>
+        <select id="setupMode">
+          <option value="ORDER">Una volta per commessa (consigliato)</option>
+          <option value="ITEM">Per articolo (ogni riga)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="orderStatus">Stato commessa</label>
+        <select id="orderStatus">
+          <option value="DRAFT">Da confermare</option>
+          <option value="PENDING">In sospeso</option>
+          <option value="PAID">Saldata</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="primary" id="addItem">+ Aggiungi articolo</button>
+      <button id="reset">Reset</button>
+      <button id="exportPdf">Esporta PDF</button>
+      <button id="saveQuote">Salva preventivo</button>
+    </div>
+
+    <p class="note">
+      "Per commessa" = una sola mandata. "Per articolo" = lavorazioni separate.
+    </p>
+
+    <details class="accordion">
+      <summary>Costi base e regole</summary>
+      <div class="accordion-body">
+        <div class="grid">
+          <div class="field">
+            <label>Costo materiale default (€/g)</label>
+            <input id="cfg_material" type="text" inputmode="decimal" />
+          </div>
+          <div class="field">
+            <label>Costo macchina (€/h)</label>
+            <input id="cfg_machine" type="text" inputmode="decimal" />
+          </div>
+          <div class="field">
+            <label>Costo progettazione (€/h)</label>
+            <input id="cfg_design" type="text" inputmode="decimal" />
+          </div>
+          <div class="field">
+            <label>Fermo macchina (€/job)</label>
+            <input id="cfg_setup" type="text" inputmode="decimal" />
+          </div>
+          <div class="field">
+            <label>Sconto serie (%)</label>
+            <input id="cfg_discount" type="text" inputmode="numeric" />
+          </div>
+          <div class="field">
+            <label>Soglia serie (pezzi)</label>
+            <input id="cfg_threshold" type="text" inputmode="numeric" />
+          </div>
+        </div>
+      </div>
+    </details>
+
+    <hr>
+
+    <details class="accordion">
+      <summary>Gruppi A/B/C (rischio / complessità)</summary>
+      <div class="accordion-body">
+        <p class="note" style="margin-top:0;">
+          I gruppi modificano: <b>stampa</b> (moltiplicatore), <b>design</b> (moltiplicatore), <b>margine</b> (%).
+        </p>
+
+        <div class="card" style="padding:12px; background:var(--soft); border-color:#eef2f7;">
+          <div class="grid">
+            <div class="field">
+              <label>Gruppo A — Moltiplicatore stampa</label>
+              <input id="gA_print" type="text" inputmode="decimal" />
+            </div>
+            <div class="field">
+              <label>Gruppo A — Moltiplicatore design</label>
+              <input id="gA_design" type="text" inputmode="decimal" />
+            </div>
+            <div class="field">
+              <label>Gruppo A — Margine (%)</label>
+              <input id="gA_margin" type="text" inputmode="numeric" />
+            </div>
+
+            <div class="field">
+              <label>Gruppo B — Moltiplicatore stampa</label>
+              <input id="gB_print" type="text" inputmode="decimal" />
+            </div>
+            <div class="field">
+              <label>Gruppo B — Moltiplicatore design</label>
+              <input id="gB_design" type="text" inputmode="decimal" />
+            </div>
+            <div class="field">
+              <label>Gruppo B — Margine (%)</label>
+              <input id="gB_margin" type="text" inputmode="numeric" />
+            </div>
+
+            <div class="field">
+              <label>Gruppo C — Moltiplicatore stampa</label>
+              <input id="gC_print" type="text" inputmode="decimal" />
+            </div>
+            <div class="field">
+              <label>Gruppo C — Moltiplicatore design</label>
+              <input id="gC_design" type="text" inputmode="decimal" />
+            </div>
+            <div class="field">
+              <label>Gruppo C — Margine (%)</label>
+              <input id="gC_margin" type="text" inputmode="numeric" />
+            </div>
+          </div>
+
+          <p class="note">
+            Consiglio base: A (1.00 / 0.80 / 20%) — B (1.10 / 1.00 / 25%) — C (1.25 / 1.30 / 35%)
+          </p>
+        </div>
+      </div>
+    </details>
+
+  </section>
+
+  <!-- CENTER -->
+  <section class="center-panel">
+    <div class="card">
+      <h2>Articoli</h2>
+      <div id="items"></div>
+    </div>
+
+  </section>
+
+  <!-- RIGHT -->
+  <aside class="summary-panel">
+    <div class="card summary-card">
+      <h2>Risultato commessa</h2>
+
+      <div class="kpi">
+        <div class="box">
+          <div class="mut">Totale finale</div>
+          <div class="big" id="total">€ 0,00</div>
+        </div>
+        <div class="box">
+          <div class="mut">Sintesi</div>
+          <div class="big" style="font-size:14px; font-weight:700;" id="noteKpi">—</div>
+        </div>
+      </div>
+
+      <table>
+        <tbody>
+          <tr><td>Totale materiale</td><td id="sumMat">€ 0,00</td></tr>
+          <tr><td>Totale stampa (con moltiplicatori gruppo)</td><td id="sumPrint">€ 0,00</td></tr>
+          <tr><td>Totale progettazioni (con moltiplicatori gruppo)</td><td id="sumDesign">€ 0,00</td></tr>
+          <tr><td><b>Sconto serie totale</b></td><td id="sumDiscount">€ 0,00</td></tr>
+          <tr><td>Fermo macchina applicato</td><td id="sumSetup">€ 0,00</td></tr>
+          <tr><td>Margine totale (somma per articolo)</td><td id="sumMargin">€ 0,00</td></tr>
+          <tr><td><b>Totale finale</b></td><td id="sumTotal"><b>€ 0,00</b></td></tr>
+        </tbody>
+      </table>
+
+      <div class="actions">
+        <button id="copy">Copia riepilogo</button>
+      </div>
+
+      <div class="note" id="note"></div>
+    </div>
+
+  </aside>
+  </section>
+
+  <section id="view-library" class="view">
+    <div class="page">
+      <div class="page-head">
+        <h2>Libreria clienti</h2>
+        <button class="btn-ghost" data-view="main">Torna alla commessa</button>
+      </div>
+
+      <p class="note" style="margin-top:0;">Salva i preventivi per cliente e recuperali in futuro.</p>
+
+      <div class="note" id="quoteCodeLabel" style="margin-top:0;"></div>
+
+      <div class="actions">
+        <button class="primary" id="saveQuote">Salva preventivo</button>
+        <button id="saveCopy">Crea copia</button>
+        <button id="openBackup">Backup / Import</button>
+        <button id="clearLibrary">Svuota libreria</button>
+      </div>
+
+      <div class="grid2" style="margin-top:10px;">
+        <div class="field">
+          <label>Cerca per cliente o codice</label>
+          <input id="librarySearch" placeholder="Es. Mario Rossi / Q-20240201" />
+        </div>
+        <div class="field">
+          <label>Filtro stato</label>
+          <select id="libraryStatus">
+            <option value="ALL">Tutti</option>
+            <option value="DRAFT">Da confermare</option>
+            <option value="PENDING">In sospeso</option>
+            <option value="PAID">Saldata</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="library" id="libraryList"></div>
+
+    </div>
+  </section>
+
+  <section id="view-report" class="view">
+    <div class="page">
+      <div class="page-head">
+        <h2>Report periodo</h2>
+        <button class="btn-ghost" data-view="main">Torna alla commessa</button>
+      </div>
+
+      <div class="grid2">
+        <div class="field">
+          <label>Da</label>
+          <input id="reportStart" type="date" />
+        </div>
+        <div class="field">
+          <label>A</label>
+          <input id="reportEnd" type="date" />
+        </div>
+        <div class="field">
+          <label>Preset</label>
+          <select id="reportPreset">
+            <option value="">—</option>
+            <option value="WEEK">Ultimi 7 giorni</option>
+            <option value="MONTH">Ultimi 30 giorni</option>
+            <option value="SEMESTER">Ultimi 6 mesi</option>
+            <option value="YEAR">Ultimo anno</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Stato</label>
+          <select id="reportStatus">
+            <option value="ALL">Tutti</option>
+            <option value="PAID">Saldate</option>
+            <option value="PENDING">In sospeso</option>
+            <option value="DRAFT">Da confermare</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button id="reportCalc">Calcola report</button>
+        <button id="reportMonth">Report mese</button>
+        <button id="reportYear">Report anno</button>
+        <button id="reportCsv">Esporta CSV</button>
+      </div>
+
+      <div class="report" id="reportOut"></div>
+      <canvas id="reportChart" width="600" height="220" style="margin-top:10px;"></canvas>
+    </div>
+  </section>
+
+  <section id="view-items" class="view">
+    <div class="page">
+      <div class="page-head">
+        <h2>Articoli salvati</h2>
+        <button class="btn-ghost" data-view="main">Torna alla commessa</button>
+      </div>
+
+      <p class="note" style="margin-top:0;">Crea, modifica o carica articoli nella tua libreria.</p>
+
+      <details class="accordion">
+        <summary>Crea/Modifica articolo</summary>
+        <div class="accordion-body">
+          <div class="grid2">
+            <div class="field span2">
+              <label>Nome articolo</label>
+              <input id="itemEditName" placeholder="Es. Staffe porta" />
+            </div>
+            <div class="field">
+              <label>Gruppo (A/B/C)</label>
+              <select id="itemEditGroup">
+                <option value="A">A — semplice</option>
+                <option value="B" selected>B — standard</option>
+                <option value="C">C — complesso</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>g per pezzo</label>
+              <input id="itemEditGrams" type="text" inputmode="decimal" placeholder="Es. 25.5" />
+            </div>
+            <div class="field">
+              <label>Ore stampa per pezzo</label>
+              <input id="itemEditPrintHours" type="text" placeholder="Es. 0:40 / 1.30" />
+            </div>
+            <div class="field">
+              <label>Ore design (totali)</label>
+              <input id="itemEditDesignHours" type="text" placeholder="Es. 2" />
+            </div>
+            <label class="checkline">
+              <input id="itemEditHasDesign" type="checkbox" checked />
+              <span>Ha progettazione</span>
+            </label>
+            <label class="checkline">
+              <input id="itemEditIsSeries" type="checkbox" />
+              <span>É una serie</span>
+            </label>
+            <label class="checkline">
+              <input id="itemEditMaterialOverride" type="checkbox" />
+              <span>Costo materiale personalizzato</span>
+            </label>
+            <div class="field" id="itemEditMaterialField" style="display:none;">
+              <label>€ per grammo (override)</label>
+              <input id="itemEditMaterialCost" type="text" inputmode="decimal" />
+            </div>
+          </div>
+          <div class="actions">
+            <button id="itemEditSave" class="primary">Salva articolo</button>
+            <button id="itemEditCancel">Annulla</button>
+          </div>
+        </div>
+      </details>
+
+      <div class="grid2" style="margin-top:10px;">
+        <div class="field">
+          <label>Cerca per nome o gruppo</label>
+          <input id="itemsSearch" placeholder="Es. Staffe / Gruppo A" />
+        </div>
+        <div class="field">
+          <label>Filtro gruppo</label>
+          <select id="itemsGroup">
+            <option value="ALL">Tutti</option>
+            <option value="A">Gruppo A</option>
+            <option value="B">Gruppo B</option>
+            <option value="C">Gruppo C</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="library" id="itemsListView"></div>
+    </div>
+  </section>
+
+  <section id="view-account" class="view">
+    <div class="page">
+      <div class="page-head">
+        <h2>Impostazioni</h2>
+        <button class="btn-ghost" data-view="main">Torna alla commessa</button>
+      </div>
+      <details class="accordion" id="accountDetails">
+        <summary>Dati account</summary>
+        <div class="accordion-body">
+          <div class="field">
+            <label>Nome utente</label>
+            <input id="userName" type="text" readonly style="background: var(--soft); cursor: not-allowed;" />
+          </div>
+          <div class="field">
+            <label>Email</label>
+            <input id="userEmail" type="text" readonly style="background: var(--soft); cursor: not-allowed;" />
+          </div>
+          <div class="field">
+            <label>Data iscrizione</label>
+            <input id="userCreatedAt" type="text" readonly style="background: var(--soft); cursor: not-allowed;" />
+          </div>
+          <div class="field">
+            <label>Azienda</label>
+            <input id="userCompany" type="text" placeholder="Nome azienda (opzionale)" />
+          </div>
+          <div class="actions">
+            <button id="saveUserProfile" class="primary">Salva profilo</button>
+            <button id="deleteAccountBtn" class="btn-ghost" style="color: var(--danger, #ef4444); border-color: var(--danger, #ef4444);">Elimina account</button>
+          </div>
+        </div>
+      </details>
+
+      <details class="accordion">
+        <summary>Aspetto</summary>
+        <div class="accordion-body">
+          <div class="grid2">
+            <div class="field">
+              <label>Tema</label>
+              <select id="themeSelect">
+                <option value="light">Chiaro</option>
+                <option value="dark">Scuro</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <details class="accordion">
+        <summary>Impostazioni PDF</summary>
+        <div class="accordion-body">
+          <div class="grid2">
+            <label class="checkline">
+              <input id="pdfShowGrams" type="checkbox" />
+              <span>Mostra g/pezzo in tabella</span>
+            </label>
+            <label class="checkline">
+              <input id="pdfShowHours" type="checkbox" />
+              <span>Mostra ore stampa/design</span>
+            </label>
+            <label class="checkline">
+              <input id="pdfShowSetup" type="checkbox" />
+              <span>Mostra fermo macchina</span>
+            </label>
+            <label class="checkline">
+              <input id="pdfShowDiscount" type="checkbox" />
+              <span>Mostra sconto serie</span>
+            </label>
+            <label class="checkline">
+              <input id="pdfShowMargin" type="checkbox" />
+              <span>Mostra dettaglio margine</span>
+            </label>
+            <label class="checkline">
+              <input id="pdfShowBaseCosts" type="checkbox" />
+              <span>Mostra costi base nel footer</span>
+            </label>
+          </div>
+        </div>
+      </details>
+
+      <details class="accordion">
+        <summary>Cloud sync (Supabase)</summary>
+        <div class="accordion-body">
+          <div class="grid2">
+            <div class="field">
+              <label>Supabase URL</label>
+              <input id="cloudUrl" placeholder="https://xxxx.supabase.co" />
+            </div>
+            <div class="field">
+              <label>Anon Key</label>
+              <input id="cloudKey" placeholder="eyJhbGciOi..." />
+            </div>
+          </div>
+
+          <label class="checkline" style="margin-top:10px;">
+            <input id="cloudEnabled" type="checkbox" />
+            <span>Abilita cloud sync</span>
+          </label>
+
+          <div class="actions">
+            <button id="cloudSave">Salva impostazioni</button>
+            <button id="cloudPull">Scarica dal cloud</button>
+            <button id="cloudPush">Invia al cloud</button>
+          </div>
+
+          <div class="note" id="cloudStatus">Cloud disattivato.</div>
+        </div>
+      </details>
+    </div>
+  </section>
+</main>
+</section>
+
+<!-- ===== ITEM LIBRARY MODAL ===== -->
+<div class="modal" id="itemLibraryModal" aria-hidden="true">
+  <div class="modal-overlay" data-close="itemlib"></div>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="itemLibraryTitle">
+    <div class="modal-head">
+      <h3 id="itemLibraryTitle">Storico articoli</h3>
+      <button class="icon-btn" id="closeItemLibrary" aria-label="Chiudi">✕</button>
+    </div>
+
+    <div class="field">
+      <label>Cerca articolo</label>
+      <input id="itemSearch" placeholder="Es. Staffe porta" />
+    </div>
+
+    <div class="library" id="itemLibraryList"></div>
+  </div>
+</div>
+
+<!-- ===== BACKUP MODAL ===== -->
+<div class="modal" id="backupModal" aria-hidden="true">
+  <div class="modal-overlay" data-close="backup"></div>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="backupTitle">
+    <div class="modal-head">
+      <h3 id="backupTitle">Backup / Import</h3>
+      <button class="icon-btn" id="closeBackup" aria-label="Chiudi">✕</button>
+    </div>
+
+    <div class="field">
+      <label>Backup JSON (incolla qui per importare)</label>
+      <textarea id="backupText" rows="8" placeholder="Incolla qui un backup JSON"></textarea>
+    </div>
+
+    <div class="actions">
+      <button id="exportBackup">Scarica backup</button>
+      <button id="copyBackup">Copia backup</button>
+      <button id="importBackup">Importa backup</button>
+    </div>
+
+    <p class="note">Il backup include la libreria clienti e le impostazioni attuali.</p>
+  </div>
+</div>
+
+<!-- ===== PRINT AREA (for PDF) ===== -->
+<section id="printArea">
+  <h1>Preventivo stampa 3D</h1>
+  <div class="sub" id="printMeta">—</div>
+
+  <div class="box">
+    <b>Riepilogo articoli</b>
+    <div style="height:8px"></div>
+    <table>
+      <thead>
+        <tr id="printHead"></tr>
+      </thead>
+      <tbody id="printItems"></tbody>
+    </table>
+  </div>
+
+  <div class="box">
+    <b>Totali</b>
+    <table>
+      <tbody>
+        <tr><td>Totale materiale</td><td class="num" id="p_sumMat">—</td></tr>
+        <tr><td>Totale stampa</td><td class="num" id="p_sumPrint">—</td></tr>
+        <tr><td>Totale design</td><td class="num" id="p_sumDesign">—</td></tr>
+        <tr id="p_rowDiscount"><td>Sconto serie totale</td><td class="num" id="p_sumDiscount">—</td></tr>
+        <tr id="p_rowSetup"><td>Fermo macchina</td><td class="num" id="p_sumSetup">—</td></tr>
+        <tr id="p_rowMargin"><td>Margine totale</td><td class="num" id="p_sumMargin">—</td></tr>
+        <tr><td class="tot">TOTALE FINALE</td><td class="tot" id="p_total">—</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="sub" id="printFoot">Preventivo generato automaticamente.</div>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="app.js"></script>
+</body>
+</html>
