@@ -113,12 +113,30 @@ function showMainApp() {
   $("view-main-app").style.display = "flex";
   $("view-main-app").style.flexDirection = "column";
   
-  // TODO: Load user's quotes and items from Supabase
-  // Temporarily disabled until we add created_at and updated_at columns
-  // if (currentUser) {
-  //   supabaseLoadQuotes().then(quotes => {...});
-  //   supabaseLoadItems().then(items => {...});
-  // }
+  // Load user's quotes and items from Supabase
+  if (currentUser) {
+    supabaseLoadQuotes().then(quotes => {
+      if (quotes.length > 0) {
+        console.log("Loaded quotes from cloud, syncing to localStorage");
+        quotes.forEach(q => {
+          allQuotes[q.id] = q;
+        });
+        saveQuotesToLocalStorage();
+        updateQuotesList();
+      }
+    });
+    
+    supabaseLoadItems().then(items => {
+      if (items.length > 0) {
+        console.log("Loaded items from cloud, syncing to localStorage");
+        items.forEach(item => {
+          itemLibrary[item.id] = item;
+        });
+        saveItemLibraryToLocalStorage();
+        renderItemLibrary();
+      }
+    });
+  }
 }
 
 async function authSignUp() {
@@ -353,10 +371,40 @@ async function supabaseUpsertQuote(quoteData) {
     return { ok: false, error: "User not logged in" };
   }
   
-  // TODO: Fix database schema - add required columns
-  // Temporarily disabled to avoid errors
-  console.log("Supabase quote sync temporarily disabled (schema mismatch)");
-  return { ok: true };
+  const sb = getAuthSupabaseClient();
+  const dataToSave = {
+    user_id: currentUser.id,
+    ...quoteData,
+    updated_at: new Date().toISOString()
+  };
+  
+  try {
+    let result;
+    if (quoteData.id) {
+      // Update existing quote
+      result = await sb
+        .from("quotes")
+        .update(dataToSave)
+        .eq("id", quoteData.id)
+        .eq("user_id", currentUser.id);
+    } else {
+      // Insert new quote
+      result = await sb
+        .from("quotes")
+        .insert([{ ...dataToSave, created_at: new Date().toISOString() }]);
+    }
+    
+    if (result.error) {
+      console.error("Supabase upsert error:", result.error);
+      return { ok: false, error: result.error.message };
+    }
+    
+    console.log("Quote synced to Supabase", result);
+    return { ok: true };
+  } catch (err) {
+    console.error("Exception in supabaseUpsertQuote:", err);
+    return { ok: false, error: err.message };
+  }
 }
 
 async function supabaseLoadQuotes() {
@@ -394,10 +442,40 @@ async function supabaseUpsertItem(itemData) {
     return { ok: false, error: "User not logged in" };
   }
   
-  // TODO: Fix database schema - add required columns
-  // Temporarily disabled to avoid errors
-  console.log("Supabase item sync temporarily disabled (schema mismatch)");
-  return { ok: true };
+  const sb = getAuthSupabaseClient();
+  const dataToSave = {
+    user_id: currentUser.id,
+    ...itemData,
+    updated_at: new Date().toISOString()
+  };
+  
+  try {
+    let result;
+    if (itemData.id) {
+      // Update existing item
+      result = await sb
+        .from("item_library")
+        .update(dataToSave)
+        .eq("id", itemData.id)
+        .eq("user_id", currentUser.id);
+    } else {
+      // Insert new item
+      result = await sb
+        .from("item_library")
+        .insert([{ ...dataToSave, created_at: new Date().toISOString() }]);
+    }
+    
+    if (result.error) {
+      console.error("Supabase item upsert error:", result.error);
+      return { ok: false, error: result.error.message };
+    }
+    
+    console.log("Item synced to Supabase", result);
+    return { ok: true };
+  } catch (err) {
+    console.error("Exception in supabaseUpsertItem:", err);
+    return { ok: false, error: err.message };
+  }
 }
 
 async function supabaseLoadItems() {
@@ -432,9 +510,26 @@ async function supabaseLoadItems() {
 async function saveUserProfile() {
   if (!currentUser) return;
   
-  // Per ora non salviamo nulla - la colonna "company" non esiste in user_profiles
-  // TODO: Aggiungere la colonna "company" a user_profiles in Supabase
-  alert("Profilo salvato!");
+  const company = document.getElementById("userCompany").value;
+  const sb = getAuthSupabaseClient();
+  
+  try {
+    const { data, error } = await sb
+      .from("user_profiles")
+      .update({ company })
+      .eq("id", currentUser.id);
+    
+    if (error) {
+      console.error("Error saving profile:", error);
+      alert("Errore nel salvataggio: " + error.message);
+    } else {
+      console.log("Profile saved", data);
+      alert("✅ Profilo salvato!");
+    }
+  } catch (err) {
+    console.error("Exception in saveUserProfile:", err);
+    alert("Errore: " + err.message);
+  }
 }
 
 async function deleteAccount() {
