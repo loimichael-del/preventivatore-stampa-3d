@@ -205,7 +205,7 @@ async function authSignUp() {
         console.error("Profile creation error:", profileError);
       }
       
-      showAuthError("Account creato! Accedi con le tue credenziali.");
+      showAuthError("✅ Account creato! Controlla la tua email per confermare l'indirizzo. Una volta confermato potrai accedere.");
       toggleAuthForms();
     }
   } catch (err) {
