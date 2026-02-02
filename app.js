@@ -1087,6 +1087,8 @@ function clearItemEditForm(){
   ui.itemEditMaterialOverride.checked = false;
   if(ui.itemEditMaterialField) ui.itemEditMaterialField.style.display = "none";
   ui.itemEditMaterialCost.value = "";
+  if(ui.itemEditImageUrl) ui.itemEditImageUrl.value = "";
+  if(ui.itemEditImageFile) ui.itemEditImageFile.value = "";
   ui.itemEditSave.textContent = "Salva articolo";
 }
 
@@ -1103,6 +1105,8 @@ function loadItemEditForm(itemId){
   ui.itemEditIsSeries.checked = item.isSeries === true;
   ui.itemEditMaterialOverride.checked = item.materialOverrideOn === true;
   ui.itemEditMaterialCost.value = fmtComma(item.materialEurPerGram || "");
+  if(ui.itemEditImageUrl) ui.itemEditImageUrl.value = item.imageUrl || "";
+  if(ui.itemEditImageFile) ui.itemEditImageFile.value = "";
   if(ui.itemEditMaterialField) ui.itemEditMaterialField.style.display = item.materialOverrideOn ? "" : "none";
   ui.itemEditSave.textContent = "Aggiorna articolo";
 }
@@ -1154,6 +1158,9 @@ const ui = {
   itemEditMaterialOverride: $("itemEditMaterialOverride"),
   itemEditMaterialCost: $("itemEditMaterialCost"),
   itemEditMaterialField: $("itemEditMaterialField"),
+  itemEditImageUrl: $("itemEditImageUrl"),
+  itemEditImageFile: $("itemEditImageFile"),
+  itemEditCapturePhoto: $("itemEditCapturePhoto"),
   itemEditSave: $("itemEditSave"),
   itemEditCancel: $("itemEditCancel"),
 
@@ -2527,6 +2534,26 @@ if(ui.itemEditMaterialOverride){
   });
 }
 
+if(ui.itemEditImageFile){
+  ui.itemEditImageFile.addEventListener("change", (e)=>{
+    const file = e.target.files?.[0];
+    if(!file) return;
+    ui.note.innerHTML = `<span class="mini">Caricamento immagine...</span>`;
+    uploadItemImage(file).then((url)=>{
+      if(ui.itemEditImageUrl) ui.itemEditImageUrl.value = url;
+      ui.note.innerHTML = `<span class="ok">Immagine caricata.</span>`;
+    }).catch((err)=>{
+      ui.note.innerHTML = `<span class="warn">Errore upload immagine: ${escapeHtml(err.message || "")}</span>`;
+    });
+  });
+}
+
+if(ui.itemEditCapturePhoto){
+  ui.itemEditCapturePhoto.addEventListener("click", ()=>{
+    if(ui.itemEditImageFile) ui.itemEditImageFile.click();
+  });
+}
+
 if(ui.itemEditSave){
   ui.itemEditSave.addEventListener("click", ()=>{
     const name = ui.itemEditName?.value?.trim();
@@ -2538,7 +2565,7 @@ if(ui.itemEditSave){
     const newItem = {
       id: currentEditItemId || uid(),
       name: name,
-      imageUrl: "",
+      imageUrl: ui.itemEditImageUrl?.value?.trim() || "",
       group: ui.itemEditGroup?.value || "B",
       date: nowStr(),
       gramsPerPiece: num(ui.itemEditGrams?.value || ""),

@@ -375,8 +375,18 @@
               <label>Nome articolo</label>
               <input id="itemEditName" placeholder="Es. Staffe porta" />
             </div>
+            <div class="field">              <label>Immagine (URL)</label>
+              <input id="itemEditImageUrl" placeholder="https://..." />
+            </div>
             <div class="field">
-              <label>Gruppo (A/B/C)</label>
+              <label>Carica immagine (file o fotocamera)</label>
+              <div style="display: flex; gap: 8px;">
+                <input id="itemEditImageFile" type="file" accept="image/*" capture="environment" style="flex: 1;" />
+                <button type="button" id="itemEditCapturePhoto" style="padding: 8px 12px; background: var(--primary); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 13px;">📷</button>
+              </div>
+              <p style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">💡 Su smartphone: clicca il file oppure il bottone 📷 per usare la fotocamera</p>
+            </div>
+            <div class="field">              <label>Gruppo (A/B/C)</label>
               <select id="itemEditGroup">
                 <option value="A">A — semplice</option>
                 <option value="B" selected>B — standard</option>
