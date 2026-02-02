@@ -213,7 +213,10 @@ async function authSignUp() {
       }
       
       showAuthError("✅ Account creato! Controlla la tua email per confermare l'indirizzo. Una volta confermato potrai accedere.");
-      toggleAuthForms();
+      // Aspetta 2 secondi prima di fare toggle così vede il messaggio
+      setTimeout(() => {
+        toggleAuthForms();
+      }, 2000);
     }
   } catch (err) {
     console.error("SignUp exception:", err);
