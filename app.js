@@ -154,22 +154,26 @@ function showMainApp() {
     dataLoadedOnce = true;
     console.log("Loading data from Supabase for the first time...");
     
-    supabaseLoadQuotes().then(quotes => {
-      if (quotes.length > 0) {
-        console.log("Loaded quotes from cloud, syncing to library");
+    // Load quotes and items in parallel without blocking UI
+    Promise.all([
+      supabaseLoadQuotes(),
+      supabaseLoadItems()
+    ]).then(([quotes, items]) => {
+      console.log("Data loaded:", quotes.length, "quotes,", items.length, "items");
+      
+      if (quotes && quotes.length > 0) {
         library = quotes;
         saveLibrary(library);
         renderLibrary();
       }
-    });
-    
-    supabaseLoadItems().then(items => {
-      if (items.length > 0) {
-        console.log("Loaded items from cloud, syncing to itemLibrary");
+      
+      if (items && items.length > 0) {
         itemLibrary = items;
         saveItemLibrary(itemLibrary);
         renderItemLibrary();
       }
+    }).catch(err => {
+      console.error("Error loading data:", err);
     });
   }
 }
@@ -330,14 +334,19 @@ async function authLogout() {
     console.log("🟣 Verified user state after logout:", user ? "STILL LOGGED IN" : "LOGGED OUT");
     
     // Clear all localStorage to ensure clean state
-    const allKeys = Object.keys(localStorage);
-    for (let key of allKeys) {
-      if (key.includes('STORAGE_') || key.includes('::') || key === 'activeUserId') {
-        localStorage.removeItem(key);
-        console.log("🟠 Cleared localStorage key:", key);
+    try {
+      const allKeys = Object.keys(localStorage);
+      for (let key of allKeys) {
+        if (key.includes('STORAGE_') || key.includes('::') || key === 'activeUserId') {
+          localStorage.removeItem(key);
+          console.log("🟠 Cleared localStorage key:", key);
+        }
       }
+    } catch (e) {
+      console.warn("Could not clear localStorage:", e);
     }
     
+    // Forza lo stato di logout immediatamente
     currentUser = null;
     activeUserId = "anon";
     clearAuthError();
@@ -346,6 +355,16 @@ async function authLogout() {
     dataLoadedOnce = false;
     console.log("🟢 Showing auth screen...");
     showAuthScreen();
+    
+    // Fallback: se il listener non triggera entro 500ms, ridisegna l'UI
+    setTimeout(() => {
+      if (currentUser === null) {
+        console.log("🟠 Fallback: ensuring auth screen is visible");
+        $("view-auth").style.display = "flex";
+        $("view-main-app").style.display = "none";
+      }
+    }, 500);
+    
   } catch (err) {
     console.error("Logout exception:", err);
     showAuthError("Errore nel logout: " + err.message);
