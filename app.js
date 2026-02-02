@@ -321,11 +321,19 @@ async function authLogout() {
       return;
     }
     
+    console.log("🟢 SignOut successful");
+    
+    // Verifica che la sessione sia veramente terminata
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    const { data: { user } } = await sb.auth.getUser();
+    console.log("🟣 Verified user state after logout:", user ? "STILL LOGGED IN" : "LOGGED OUT");
+    
     currentUser = null;
     clearAuthError();
     clearAuthForms();
     handleUserChange(null);
-    console.log("🟢 Logout successful, showing auth screen...");
+    console.log("🟢 Showing auth screen...");
     showAuthScreen();
   } catch (err) {
     console.error("Logout exception:", err);
