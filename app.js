@@ -259,12 +259,15 @@ async function authLoginGoogle() {
 }
 
 async function authLogout() {
+  console.log("🔴 Logout clicked!");
   const sb = getAuthSupabaseClient();
   try {
+    console.log("🟡 Calling signOut...");
     await sb.auth.signOut();
     currentUser = null;
     clearAuthError();
     clearAuthForms();
+    console.log("🟢 Showing auth screen...");
     showAuthScreen();
   } catch (err) {
     console.error("Logout error:", err);
