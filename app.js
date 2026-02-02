@@ -724,51 +724,6 @@ async function deleteAccount() {
 
 
 
-async function loadUserProfile() {
-  if (!currentUser) return;
-  
-  const sb = getAuthSupabaseClient();
-  
-  // Set name
-  const userName = currentUser.user_metadata?.full_name || 
-                   currentUser.user_metadata?.name || 
-                   currentUser.email?.split('@')[0] || 
-                   "Utente";
-  
-  const userNameEl = $("userName");
-  if (userNameEl) userNameEl.value = userName;
-  
-  // Set email
-  const userEmailEl = $("userEmail");
-  if (userEmailEl) userEmailEl.value = currentUser.email || "";
-  
-  // Set created date
-  const userCreatedAtEl = $("userCreatedAt");
-  if (currentUser.created_at && userCreatedAtEl) {
-    const date = new Date(currentUser.created_at);
-    const formatted = date.toLocaleDateString('it-IT', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-    userCreatedAtEl.value = formatted;
-  }
-  
-  // Load company from database
-  const { data } = await sb
-    .from("user_profiles")
-    .select("*")
-    .eq("id", currentUser.id)
-    .single();
-  
-  if (data) {
-    const userCompanyEl = $("userCompany");
-    if (userCompanyEl) userCompanyEl.value = data.company || "";
-  }
-}
-
 /* ===========================
    TIME PARSER (the important part)
    Accept:
