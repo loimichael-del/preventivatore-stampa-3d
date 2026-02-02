@@ -34,12 +34,20 @@ const SUPABASE_URL = "https://lfyyrhofxxfggsiwotgd.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_IQH251PhBPuPOlA3LcWakg_EOahojfN";
 
 let currentUser = null;
+let supabaseClient = null;
+let authListenerSetup = false;
+let dataLoadedOnce = false;
 
 function getAuthSupabaseClient() {
-  return window.supabase?.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  if (!supabaseClient && window.supabase) {
+    console.log("🔵 Creating NEW auth Supabase client");
+    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  }
+  return supabaseClient;
 }
 
 async function initSupabase() {
+  console.log("🟢 initSupabase called");
   const sb = getAuthSupabaseClient();
   if (!sb) {
     console.error("Supabase non caricato");
@@ -56,65 +64,63 @@ async function initSupabase() {
     showAuthScreen();
   }
   
-  // Listen for auth changes
-  sb.auth.onAuthStateChange(async (event, session) => {
-    if (session?.user) {
-      currentUser = session.user;
-      await ensureUserProfile(sb, session.user);
-      showMainApp();
-    } else {
-      currentUser = null;
-      showAuthScreen();
-    }
-  });
+  // Listen for auth changes - SOLO UNA VOLTA
+  if (!authListenerSetup) {
+    console.log("🟡 Setting up auth listener");
+    authListenerSetup = true;
+    sb.auth.onAuthStateChange(async (event, session) => {
+      console.log("🔴 Auth state changed:", event);
+      if (session?.user) {
+        currentUser = session.user;
+        await ensureUserProfile(sb, session.user);
+        showMainApp();
+      } else {
+        currentUser = null;
+        showAuthScreen();
+      }
+    });
+  }
 }
 
 async function ensureUserProfile(sb, user) {
-  // Check if profile exists
-  const { data, error } = await sb
-    .from("user_profiles")
-    .select("*")
-    .eq("id", user.id)
-    .single();
-  
+  // Usa upsert per inserire solo se non esiste, senza update
   const now = new Date().toISOString();
   
-  // If profile doesn't exist, create it
-  if (!data) {
-    console.log("Creating new user profile for:", user.id);
-    const { error: insertError } = await sb.from("user_profiles").insert({
+  const { error: upsertError } = await sb
+    .from("user_profiles")
+    .upsert({
       id: user.id,
       email: user.email,
       company: user.user_metadata?.company || "N/A",
       created_at: now
+    }, {
+      onConflict: 'id',
+      ignoreDuplicates: true  // NON aggiornare se esiste già!
     });
-    
-    if (insertError) {
-      console.error("Error creating profile:", insertError);
-    }
-  } else {
-    // Profile esiste già - aggiorna il created_at alla data odierna
-    // (utile se l'utente ha eliminato e ricreato l'account)
-    console.log("Profile exists - updating created_at");
-    await sb
-      .from("user_profiles")
-      .update({ created_at: now })
-      .eq("id", user.id);
+  
+  if (upsertError) {
+    console.error("Error ensuring profile:", upsertError);
   }
 }
 
 function showAuthScreen() {
+  console.log("🟠 showAuthScreen called");
   $("view-auth").style.display = "flex";
   $("view-main-app").style.display = "none";
+  dataLoadedOnce = false; // Reset quando si fa logout
 }
 
 function showMainApp() {
+  console.log("🟣 showMainApp called, dataLoadedOnce:", dataLoadedOnce);
   $("view-auth").style.display = "none";
   $("view-main-app").style.display = "flex";
   $("view-main-app").style.flexDirection = "column";
   
-  // Load user's quotes and items from Supabase
-  if (currentUser) {
+  // Load user's quotes and items from Supabase - SOLO LA PRIMA VOLTA
+  if (currentUser && !dataLoadedOnce) {
+    dataLoadedOnce = true;
+    console.log("Loading data from Supabase for the first time...");
+    
     supabaseLoadQuotes().then(quotes => {
       if (quotes.length > 0) {
         console.log("Loaded quotes from cloud, syncing to localStorage");
@@ -1750,11 +1756,30 @@ function exportReportCsv(rows){
 /* ===========================
    Cloud sync (Supabase)
 =========================== */
+let cloudSupabaseClient = null;
+let lastCloudConfig = { url: null, anonKey: null };
+
 function getSupabaseClient(){
   if(!cloud.enabled) return null;
   if(!cloud.url || !cloud.anonKey) return null;
-  if(!window.supabase?.createClient) return null;
-  return window.supabase.createClient(cloud.url, cloud.anonKey);
+  
+  // Riusa il client di autenticazione se gli URL corrispondono
+  if(cloud.url === SUPABASE_URL && cloud.anonKey === SUPABASE_ANON_KEY) {
+    return getAuthSupabaseClient();
+  }
+  
+  // Se la configurazione cloud è cambiata, resetta il client
+  if(lastCloudConfig.url !== cloud.url || lastCloudConfig.anonKey !== cloud.anonKey) {
+    cloudSupabaseClient = null;
+    lastCloudConfig = { url: cloud.url, anonKey: cloud.anonKey };
+  }
+  
+  // Crea il client solo se non esiste
+  if(!cloudSupabaseClient && window.supabase?.createClient) {
+    cloudSupabaseClient = window.supabase.createClient(cloud.url, cloud.anonKey);
+  }
+  
+  return cloudSupabaseClient;
 }
 
 async function cloudUpsertQuote(snap){
