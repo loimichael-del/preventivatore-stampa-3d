@@ -56,14 +56,19 @@ async function initSupabase() {
   
   // Check if user is already logged in
   const { data: { user } } = await sb.auth.getUser();
+  console.log("🟣 Current user from Supabase:", user?.id || "NO USER");
+  
   if (user) {
     handleUserChange(user);
     currentUser = user;
     await ensureUserProfile(sb, user);
     showMainApp();
+    console.log("✅ User logged in, showing main app");
   } else {
+    currentUser = null;
     handleUserChange(null);
     showAuthScreen();
+    console.log("✅ No user, showing auth screen");
   }
   
   // Listen for auth changes - SOLO UNA VOLTA
@@ -71,13 +76,15 @@ async function initSupabase() {
     console.log("🟡 Setting up auth listener");
     authListenerSetup = true;
     sb.auth.onAuthStateChange(async (event, session) => {
-      console.log("🔴 Auth state changed:", event);
+      console.log("🔴 Auth state changed:", event, "Session:", session?.user?.id || "NO SESSION");
       if (session?.user) {
+        console.log("🟢 User session active");
         handleUserChange(session.user);
         currentUser = session.user;
         await ensureUserProfile(sb, session.user);
         showMainApp();
       } else {
+        console.log("🔴 User session ended");
         currentUser = null;
         handleUserChange(null);
         showAuthScreen();
@@ -284,14 +291,23 @@ async function authLogout() {
   const sb = getAuthSupabaseClient();
   try {
     console.log("🟡 Calling signOut...");
-    await sb.auth.signOut();
+    const { error } = await sb.auth.signOut();
+    
+    if (error) {
+      console.error("🔴 SignOut error:", error);
+      showAuthError("Errore nel logout: " + error.message);
+      return;
+    }
+    
     currentUser = null;
     clearAuthError();
     clearAuthForms();
-    console.log("🟢 Showing auth screen...");
+    handleUserChange(null);
+    console.log("🟢 Logout successful, showing auth screen...");
     showAuthScreen();
   } catch (err) {
-    console.error("Logout error:", err);
+    console.error("Logout exception:", err);
+    showAuthError("Errore nel logout: " + err.message);
   }
 }
 
