@@ -2224,13 +2224,18 @@ if(ui.saveQuote){
     ui.note.innerHTML = `<span class="ok">Preventivo salvato in libreria.</span>`;
     
     // Auto-sync to Supabase if user is logged in
+    console.log("🔵 Checking auto-sync, currentUser:", currentUser);
     if (currentUser) {
+      console.log("🟢 User logged in, calling supabaseUpsertQuote...");
       const result = await supabaseUpsertQuote(snap);
+      console.log("🟡 Upsert result:", result);
       if (!result.ok) {
         ui.note.innerHTML += ` <span class="warn">Errore cloud: ${result.error}</span>`;
       } else {
         ui.note.innerHTML += ` <span style="color: var(--success);">✓ Sincronizzato al cloud</span>`;
       }
+    } else {
+      console.log("🔴 No currentUser - sync skipped");
     }
   });
 }
