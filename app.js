@@ -161,6 +161,13 @@ async function authSignUp() {
     return;
   }
   
+  // Validazione formato email
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    showAuthError("Email non valida. Controlla il formato (es: nome@dominio.com)");
+    return;
+  }
+  
   if (password !== password2) {
     showAuthError("Le password non corrispondono");
     return;
@@ -221,6 +228,13 @@ async function authLogin() {
   
   if (!email || !password) {
     showAuthError("Email e password sono obbligatori");
+    return;
+  }
+  
+  // Validazione formato email
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    showAuthError("Email non valida. Controlla il formato (es: nome@dominio.com)");
     return;
   }
   
