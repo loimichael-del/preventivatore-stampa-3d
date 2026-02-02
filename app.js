@@ -127,22 +127,18 @@ function showMainApp() {
     
     supabaseLoadQuotes().then(quotes => {
       if (quotes.length > 0) {
-        console.log("Loaded quotes from cloud, syncing to localStorage");
-        quotes.forEach(q => {
-          allQuotes[q.id] = q;
-        });
-        saveQuotesToLocalStorage();
-        updateQuotesList();
+        console.log("Loaded quotes from cloud, syncing to library");
+        library = quotes;
+        saveLibrary(library);
+        renderLibrary();
       }
     });
     
     supabaseLoadItems().then(items => {
       if (items.length > 0) {
-        console.log("Loaded items from cloud, syncing to localStorage");
-        items.forEach(item => {
-          itemLibrary[item.id] = item;
-        });
-        saveItemLibraryToLocalStorage();
+        console.log("Loaded items from cloud, syncing to itemLibrary");
+        itemLibrary = items;
+        saveItemLibrary(itemLibrary);
         renderItemLibrary();
       }
     });
