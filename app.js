@@ -789,7 +789,7 @@ async function deleteAccount() {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "X-User-Id": currentUser.id
+            "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxmeXlyaG9meHhmZ2dzaXdvdGdkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzc5OTI4MTIsImV4cCI6MjA1MzU2ODgxMn0.PuPOlA3lCikakg_E0ahojfN"
           },
           body: JSON.stringify({ userId: currentUser.id })
         }
@@ -831,6 +831,7 @@ async function deleteAccount() {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxmeXlyaG9meHhmZ2dzaXdvdGdkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzc5OTI4MTIsImV4cCI6MjA1MzU2ODgxMn0.PuPOlA3lCikakg_E0ahojfN"
           },
           body: JSON.stringify({ userId: currentUser.id })
         }
