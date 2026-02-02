@@ -1406,8 +1406,12 @@ function itemTemplate(it, idx){
       </div>
 
       <div class="field span2">
-        <label>Carica immagine (file)</label>
-        <input data-k="imageFile" type="file" accept="image/*" />
+        <label>Carica immagine (file o fotocamera)</label>
+        <div style="display: flex; gap: 8px;">
+          <input data-k="imageFile" type="file" accept="image/*" capture="environment" style="flex: 1;" />
+          <button type="button" data-act="capturePhoto" style="padding: 8px 12px; background: var(--primary); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 13px;">📷</button>
+        </div>
+        <p style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">💡 Su smartphone: clicca il file oppure il bottone 📷 per usare la fotocamera</p>
       </div>
 
       <div class="field span2">
@@ -2872,6 +2876,10 @@ ui.items.addEventListener("click", (e)=>{
   }
   if(action === "pickItem"){
     openItemLibrary(id);
+  }
+  if(action === "capturePhoto"){
+    const fileInput = e.target.closest(".item")?.querySelector("input[data-k='imageFile']");
+    if(fileInput) fileInput.click();
   }
 });
 
