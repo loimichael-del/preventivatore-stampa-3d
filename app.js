@@ -2022,35 +2022,58 @@ async function cloudPushAll(){
 }
 
 async function uploadItemImage(file){
+  console.log("🔵 uploadItemImage called with file:", file.name, "size:", file.size);
+  
   // Prova con client autenticato se disponibile
   let client = getAuthSupabaseClient();
+  console.log("🔵 Auth client:", client ? "EXISTS" : "NULL");
   
   // Se non autenticato, usa client pubblico
-  if(!client) client = getSupabaseClient();
+  if(!client) {
+    client = getSupabaseClient();
+    console.log("🟡 Using public client:", client ? "EXISTS" : "NULL");
+  }
   
   if(!client){
+    console.log("🟠 No client available, using base64 fallback");
     // fallback: local base64
     return new Promise((resolve, reject)=>{
       const reader = new FileReader();
-      reader.onload = ()=> resolve(reader.result);
+      reader.onload = ()=> {
+        console.log("✅ Base64 encoded, length:", reader.result.length);
+        resolve(reader.result);
+      };
       reader.onerror = reject;
       reader.readAsDataURL(file);
     });
   }
 
   try {
+    console.log("🔵 Attempting upload to Supabase Storage...");
     const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
     const path = `items/${Date.now()}_${uid()}_${safeName}`;
+    console.log("🔵 Upload path:", path);
+    
     const { error } = await client.storage.from("item-images").upload(path, file, { upsert: true });
-    if(error) throw new Error(error.message);
+    if(error) {
+      console.error("🔴 Supabase upload error:", error);
+      throw new Error(error.message);
+    }
+    
+    console.log("✅ Upload successful");
     const { data } = client.storage.from("item-images").getPublicUrl(path);
-    return data?.publicUrl || "";
+    const publicUrl = data?.publicUrl || "";
+    console.log("✅ Public URL:", publicUrl);
+    return publicUrl;
   } catch(err) {
-    console.warn("Supabase storage error, falling back to base64:", err);
+    console.warn("🟠 Supabase storage error, falling back to base64:", err);
     // Fallback to base64 if upload fails
     return new Promise((resolve, reject)=>{
       const reader = new FileReader();
-      reader.onload = ()=> resolve(reader.result);
+      reader.onload = ()=> {
+        console.log("✅ Fallback base64 encoded");
+        resolve(reader.result);
+      };
       reader.onerror = reject;
       reader.readAsDataURL(file);
     });
@@ -2865,21 +2888,34 @@ ui.items.addEventListener("change", (e)=>{
   if(e.target.matches("input[data-k='imageFile']")){
     const input = e.target;
     const file = input.files?.[0];
-    if(!file) return;
+    if(!file) {
+      console.log("❌ No file selected");
+      return;
+    }
+    console.log("📸 File selected for item image:", file.name);
     const wrap = input.closest(".item");
     const id = wrap?.getAttribute("data-id");
-    if(!id) return;
+    if(!id) {
+      console.log("❌ Could not find item ID");
+      return;
+    }
+    console.log("✅ Item ID found:", id);
     ui.note.innerHTML = `<span class="mini">Caricamento immagine...</span>`;
     uploadItemImage(file).then((url)=>{
       readItemsFromDOM();
       const idx = state.items.findIndex(x=>x.id===id);
-      if(idx === -1) return;
+      if(idx === -1) {
+        console.log("❌ Item not found after upload");
+        return;
+      }
       state.items[idx].imageUrl = url;
+      console.log("✅ Item updated with image URL");
       saveState(state);
       renderItems();
       render();
-      ui.note.innerHTML = `<span class="ok">Immagine aggiornata.</span>`;
+      ui.note.innerHTML = `<span class="ok">✅ Immagine caricata e salvata.</span>`;
     }).catch((err)=>{
+      console.error("❌ Upload error:", err);
       ui.note.innerHTML = `<span class="warn">Errore upload immagine: ${escapeHtml(err.message || "")}</span>`;
     });
   }
