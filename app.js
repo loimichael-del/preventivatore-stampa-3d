@@ -779,31 +779,33 @@ async function deleteAccount() {
     
     console.log("Deleting user data for:", currentUser.id);
     
-    // Get the user's session token
-    const { data: { session } } = await sb.auth.getSession();
-    if (session && session.access_token) {
-      try {
-        console.log("Calling delete_user Edge Function...");
-        const response = await fetch(
-          "https://lfyyrhofxxfggsiwotgd.supabase.co/functions/v1/delete_user",
-          {
-            method: "POST",
-            headers: {
-              "Authorization": `Bearer ${session.access_token}`,
-              "Content-Type": "application/json"
-            }
-          }
-        );
-        
-        if (response.ok) {
-          console.log("Auth user deleted via Edge Function");
-        } else {
-          const errorData = await response.json();
-          console.warn("Edge Function warning:", errorData);
+    // Chiama Edge Function per cancellare l'utente auth
+    try {
+      console.log("Calling delete_user Edge Function for user:", currentUser.id);
+      
+      const response = await fetch(
+        "https://lfyyrhofxxfggsiwotgd.supabase.co/functions/v1/delete_user",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-User-Id": currentUser.id
+          },
+          body: JSON.stringify({ userId: currentUser.id })
         }
-      } catch (edgeFuncErr) {
-        console.warn("Could not call delete_user Edge Function:", edgeFuncErr);
+      );
+      
+      console.log("Delete function response status:", response.status);
+      const responseText = await response.text();
+      console.log("Delete function response body:", responseText);
+      
+      if (response.ok) {
+        console.log("Auth user deleted via Edge Function");
+      } else {
+        console.warn("Edge Function error:", response.status, responseText);
       }
+    } catch (edgeFuncErr) {
+      console.error("Exception calling delete_user Edge Function:", edgeFuncErr);
     }
     
     // Cancella tutti i preventivi dell'utente
@@ -820,12 +822,28 @@ async function deleteAccount() {
       .eq("user_id", currentUser.id);
     console.log("Items deletion result:", itemsResult);
     
-    // Cancella il profilo utente
-    const profileResult = await sb
-      .from("user_profiles")
-      .delete()
-      .eq("id", currentUser.id);
-    console.log("Profile deletion result:", profileResult);
+    // Cancella il profilo utente usando Edge Function (bypassa RLS)
+    try {
+      console.log("Calling delete_user_profile Edge Function...");
+      const profileDeleteResponse = await fetch(
+        "https://lfyyrhofxxfggsiwotgd.supabase.co/functions/v1/delete_user_profile",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ userId: currentUser.id })
+        }
+      );
+      
+      console.log("Profile delete function response:", profileDeleteResponse.status);
+      if (!profileDeleteResponse.ok) {
+        const errorText = await profileDeleteResponse.text();
+        console.warn("Profile delete error:", errorText);
+      }
+    } catch (profileErr) {
+      console.error("Exception deleting profile:", profileErr);
+    }
     
     console.log("User data deleted successfully");
     
