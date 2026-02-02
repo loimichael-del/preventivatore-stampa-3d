@@ -2634,6 +2634,22 @@ if(ui.itemEditSave){
     }
 
     saveItemLibrary(itemLibrary);
+
+    // Auto-sync to Supabase if user is logged in
+    if (currentUser) {
+      supabaseUpsertItem(newItem).then(result => {
+        if (!result.ok) {
+          ui.note.innerHTML += ` <span class="warn">Errore cloud: ${result.error}</span>`;
+        } else {
+          ui.note.innerHTML += ` <span style="color: var(--success);">✓ Sincronizzato al cloud</span>`;
+        }
+      });
+    } else if (cloud.enabled) {
+      cloudUpsertItem(newItem).then(res=>{
+        if (!res.ok && ui.cloudStatus) ui.cloudStatus.textContent = `Cloud: ${res.error}`;
+      });
+    }
+
     clearItemEditForm();
     renderItemsView();
   });
