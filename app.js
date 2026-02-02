@@ -2022,7 +2022,12 @@ async function cloudPushAll(){
 }
 
 async function uploadItemImage(file){
-  const client = getSupabaseClient();
+  // Prova con client autenticato se disponibile
+  let client = getAuthSupabaseClient();
+  
+  // Se non autenticato, usa client pubblico
+  if(!client) client = getSupabaseClient();
+  
   if(!client){
     // fallback: local base64
     return new Promise((resolve, reject)=>{
@@ -2033,12 +2038,23 @@ async function uploadItemImage(file){
     });
   }
 
-  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-  const path = `items/${Date.now()}_${uid()}_${safeName}`;
-  const { error } = await client.storage.from("item-images").upload(path, file, { upsert: true });
-  if(error) throw new Error(error.message);
-  const { data } = client.storage.from("item-images").getPublicUrl(path);
-  return data?.publicUrl || "";
+  try {
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const path = `items/${Date.now()}_${uid()}_${safeName}`;
+    const { error } = await client.storage.from("item-images").upload(path, file, { upsert: true });
+    if(error) throw new Error(error.message);
+    const { data } = client.storage.from("item-images").getPublicUrl(path);
+    return data?.publicUrl || "";
+  } catch(err) {
+    console.warn("Supabase storage error, falling back to base64:", err);
+    // Fallback to base64 if upload fails
+    return new Promise((resolve, reject)=>{
+      const reader = new FileReader();
+      reader.onload = ()=> resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
 }
 
 /* ===========================
@@ -2497,8 +2513,8 @@ if(ui.itemsListView){
 
     if(action === "edit"){
       loadItemEditForm(id);
-      document.querySelector("details[open]")?.removeAttribute("open");
-      document.querySelector("[class*='accordion']")?.setAttribute("open", "");
+      const accordion = document.getElementById("itemEditAccordion");
+      if(accordion) accordion.setAttribute("open", "");
       return;
     }
 
@@ -2539,10 +2555,16 @@ if(ui.itemEditImageFile){
     const file = e.target.files?.[0];
     if(!file) return;
     ui.note.innerHTML = `<span class="mini">Caricamento immagine...</span>`;
+    console.log("📷 Caricamento foto:", file.name);
     uploadItemImage(file).then((url)=>{
-      if(ui.itemEditImageUrl) ui.itemEditImageUrl.value = url;
-      ui.note.innerHTML = `<span class="ok">Immagine caricata.</span>`;
+      console.log("✅ Foto caricata, URL:", url.substring(0, 50) + "...");
+      if(ui.itemEditImageUrl) {
+        ui.itemEditImageUrl.value = url;
+        console.log("✅ Campo imageUrl aggiornato");
+      }
+      ui.note.innerHTML = `<span class="ok">✓ Immagine caricata. Clicca "Salva articolo" per confermare.</span>`;
     }).catch((err)=>{
+      console.error("❌ Errore upload:", err);
       ui.note.innerHTML = `<span class="warn">Errore upload immagine: ${escapeHtml(err.message || "")}</span>`;
     });
   });
