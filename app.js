@@ -625,12 +625,18 @@ async function supabaseLoadItems() {
     }
     
     console.log("Loaded items from Supabase:", data);
-    return (data || []).map(r => ({
-      ...r.payload,
-      id: r.item_id,
-      name: r.name || r.payload?.name || "Articolo",
-      date: r.updated_at || nowStr()
-    }));
+    return (data || []).map(r => {
+      let payload = r.payload;
+      if (typeof payload === "string") {
+        try { payload = JSON.parse(payload); } catch { payload = {}; }
+      }
+      return {
+        ...payload,
+        id: r.item_id,
+        name: r.name || payload?.name || "Articolo",
+        date: r.updated_at || nowStr()
+      };
+    });
   } catch (err) {
     console.error("Exception in supabaseLoadItems:", err);
     return [];
