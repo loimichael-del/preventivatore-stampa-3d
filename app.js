@@ -779,6 +779,33 @@ async function deleteAccount() {
     
     console.log("Deleting user data for:", currentUser.id);
     
+    // Get the user's session token
+    const { data: { session } } = await sb.auth.getSession();
+    if (session && session.access_token) {
+      try {
+        console.log("Calling delete_user Edge Function...");
+        const response = await fetch(
+          "https://lfyyrhofxxfggsiwotgd.supabase.co/functions/v1/delete_user",
+          {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${session.access_token}`,
+              "Content-Type": "application/json"
+            }
+          }
+        );
+        
+        if (response.ok) {
+          console.log("Auth user deleted via Edge Function");
+        } else {
+          const errorData = await response.json();
+          console.warn("Edge Function warning:", errorData);
+        }
+      } catch (edgeFuncErr) {
+        console.warn("Could not call delete_user Edge Function:", edgeFuncErr);
+      }
+    }
+    
     // Cancella tutti i preventivi dell'utente
     const quotesResult = await sb
       .from("quotes")
