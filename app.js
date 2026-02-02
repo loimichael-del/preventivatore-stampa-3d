@@ -857,18 +857,20 @@ const CLOUD_KEY = "preventivatore3d_cloud_settings_v1";
 const THEME_KEY = "preventivatore3d_theme_v1";
 const LAST_USER_KEY = "preventivatore3d_last_user_id_v1";
 
-function resetLocalDataForUserChange() {
-  localStorage.removeItem(STORAGE_KEY);
-  localStorage.removeItem(LIBRARY_KEY);
-  localStorage.removeItem(ITEM_LIBRARY_KEY);
+let activeUserId = "anon";
 
-  state = structuredClone(DEFAULTS);
-  library = [];
-  itemLibrary = [];
+function getUserScopedKey(baseKey) {
+  return `${baseKey}::${activeUserId}`;
+}
 
-  saveState(state);
-  saveLibrary(library);
-  saveItemLibrary(itemLibrary);
+function setActiveUserData(user) {
+  activeUserId = user?.id || "anon";
+  state = loadState();
+  library = loadLibrary();
+  itemLibrary = loadItemLibrary();
+
+  if (typeof renderLibrary === "function") renderLibrary();
+  if (typeof renderItemLibrary === "function") renderItemLibrary();
 }
 
 function handleUserChange(newUser) {
@@ -877,15 +879,15 @@ function handleUserChange(newUser) {
 
   if (newUserId) {
     if (!lastUserId || lastUserId !== newUserId) {
-      console.log("🔄 User changed, clearing local data cache");
-      resetLocalDataForUserChange();
+      console.log("🔄 User changed, switching local data cache");
       dataLoadedOnce = false;
     }
+    setActiveUserData(newUser);
     localStorage.setItem(LAST_USER_KEY, newUserId);
   } else {
-    console.log("🔄 Logout, clearing local data cache");
-    resetLocalDataForUserChange();
+    console.log("🔄 Logout, switching to anon cache");
     dataLoadedOnce = false;
+    setActiveUserData(null);
     // non rimuoviamo LAST_USER_KEY per confrontarlo al prossimo login
   }
 }
@@ -942,7 +944,7 @@ function generateQuoteId(){
 
 function loadState() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(getUserScopedKey(STORAGE_KEY));
     if (!raw) return structuredClone(DEFAULTS);
     const parsed = JSON.parse(raw);
     const s = {
@@ -957,11 +959,11 @@ function loadState() {
     return structuredClone(DEFAULTS);
   }
 }
-function saveState(s){ localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); }
+function saveState(s){ localStorage.setItem(getUserScopedKey(STORAGE_KEY), JSON.stringify(s)); }
 
 function loadLibrary() {
   try {
-    const raw = localStorage.getItem(LIBRARY_KEY);
+    const raw = localStorage.getItem(getUserScopedKey(LIBRARY_KEY));
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed : [];
@@ -969,11 +971,11 @@ function loadLibrary() {
     return [];
   }
 }
-function saveLibrary(list){ localStorage.setItem(LIBRARY_KEY, JSON.stringify(list)); }
+function saveLibrary(list){ localStorage.setItem(getUserScopedKey(LIBRARY_KEY), JSON.stringify(list)); }
 
 function loadItemLibrary(){
   try{
-    const raw = localStorage.getItem(ITEM_LIBRARY_KEY);
+    const raw = localStorage.getItem(getUserScopedKey(ITEM_LIBRARY_KEY));
     if(!raw) return [];
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed : [];
@@ -981,7 +983,7 @@ function loadItemLibrary(){
     return [];
   }
 }
-function saveItemLibrary(list){ localStorage.setItem(ITEM_LIBRARY_KEY, JSON.stringify(list)); }
+function saveItemLibrary(list){ localStorage.setItem(getUserScopedKey(ITEM_LIBRARY_KEY), JSON.stringify(list)); }
 
 function loadCloudSettings(){
   try{
