@@ -381,12 +381,16 @@ async function supabaseUpsertQuote(quoteData) {
   }
   
   const sb = getAuthSupabaseClient();
+  const payload = quoteData?.state || quoteData;
+  const quoteId = quoteData?.quoteId || quoteData?.id || `quote_${Date.now()}`;
+  const clientName = quoteData?.client || payload?.order?.client || "Senza nome";
   
-  // Struttura corretta per la tabella quotes di Supabase
+  // Struttura corretta per la tabella quotes di Supabase (per utente)
   const dataToSave = {
-    quote_id: quoteData.id || `quote_${Date.now()}`,
-    client: quoteData.client || "N/A",
-    payload: quoteData, // Tutto il preventivo va in payload come JSONB
+    quote_id: quoteId,
+    user_id: currentUser.id,
+    client: clientName,
+    payload,
     updated_at: new Date().toISOString()
   };
   
@@ -423,9 +427,9 @@ async function supabaseLoadQuotes() {
     console.log("Loading quotes for user:", currentUser.id);
     const { data, error } = await sb
       .from("quotes")
-      .select("*")
+      .select("quote_id, client, payload, updated_at")
       .eq("user_id", currentUser.id)
-      .order("created_at", { ascending: false });
+      .order("updated_at", { ascending: false });
     
     if (error) {
       console.error("Supabase load error:", error);
@@ -433,7 +437,20 @@ async function supabaseLoadQuotes() {
     }
     
     console.log("Loaded quotes from Supabase:", data);
-    return data || [];
+    return (data || []).map(r => {
+      let total = 0;
+      try { total = quoteOrder(r.payload).sums.total; } catch {}
+      return {
+        id: r.quote_id,
+        quoteId: r.quote_id,
+        client: r.client || r.payload?.order?.client || "Senza nome",
+        date: r.updated_at || nowStr(),
+        itemsCount: Array.isArray(r.payload?.items) ? r.payload.items.length : 0,
+        total,
+        status: r.payload?.order?.status || "DRAFT",
+        state: r.payload
+      };
+    });
   } catch (err) {
     console.error("Exception in supabaseLoadQuotes:", err);
     return [];
@@ -447,27 +464,19 @@ async function supabaseUpsertItem(itemData) {
   }
   
   const sb = getAuthSupabaseClient();
+  const itemId = itemData?.id || `item_${Date.now()}`;
   const dataToSave = {
+    item_id: itemId,
     user_id: currentUser.id,
-    ...itemData,
+    name: itemData?.name || "Articolo",
+    payload: itemData,
     updated_at: new Date().toISOString()
   };
   
   try {
-    let result;
-    if (itemData.id) {
-      // Update existing item
-      result = await sb
-        .from("item_library")
-        .update(dataToSave)
-        .eq("id", itemData.id)
-        .eq("user_id", currentUser.id);
-    } else {
-      // Insert new item
-      result = await sb
-        .from("item_library")
-        .insert([{ ...dataToSave, created_at: new Date().toISOString() }]);
-    }
+    const result = await sb
+      .from("item_library")
+      .upsert(dataToSave, { onConflict: "item_id" });
     
     if (result.error) {
       console.error("Supabase item upsert error:", result.error);
@@ -494,9 +503,9 @@ async function supabaseLoadItems() {
     console.log("Loading items for user:", currentUser.id);
     const { data, error } = await sb
       .from("item_library")
-      .select("*")
+      .select("item_id, name, payload, updated_at")
       .eq("user_id", currentUser.id)
-      .order("created_at", { ascending: false });
+      .order("updated_at", { ascending: false });
     
     if (error) {
       console.error("Supabase load items error:", error);
@@ -504,7 +513,12 @@ async function supabaseLoadItems() {
     }
     
     console.log("Loaded items from Supabase:", data);
-    return data || [];
+    return (data || []).map(r => ({
+      ...r.payload,
+      id: r.item_id,
+      name: r.name || r.payload?.name || "Articolo",
+      date: r.updated_at || nowStr()
+    }));
   } catch (err) {
     console.error("Exception in supabaseLoadItems:", err);
     return [];
@@ -1783,10 +1797,12 @@ function getSupabaseClient(){
 async function cloudUpsertQuote(snap){
   const client = getSupabaseClient();
   if(!client) return { ok:false, error:"Cloud non configurato" };
+  if(!currentUser) return { ok:false, error:"Utente non autenticato" };
   const payload = {
-    quote_id: snap.quoteId,
-    client: snap.client,
-    payload: snap.state,
+    quote_id: snap.quoteId || snap.id,
+    user_id: currentUser.id,
+    client: snap.client || snap.state?.order?.client || "Senza nome",
+    payload: snap.state || snap,
     updated_at: new Date().toISOString()
   };
   const { error } = await client.from("quotes").upsert(payload, { onConflict: "quote_id" });
@@ -1796,8 +1812,10 @@ async function cloudUpsertQuote(snap){
 async function cloudUpsertItem(item){
   const client = getSupabaseClient();
   if(!client) return { ok:false, error:"Cloud non configurato" };
+  if(!currentUser) return { ok:false, error:"Utente non autenticato" };
   const payload = {
     item_id: item.id,
+    user_id: currentUser.id,
     name: item.name,
     payload: item,
     updated_at: new Date().toISOString()
@@ -1809,10 +1827,17 @@ async function cloudUpsertItem(item){
 async function cloudPullAll(){
   const client = getSupabaseClient();
   if(!client) return { ok:false, error:"Cloud non configurato" };
-  const { data: quoteRows, error: qErr } = await client.from("quotes").select("quote_id, client, payload, updated_at");
+  if(!currentUser) return { ok:false, error:"Utente non autenticato" };
+  const { data: quoteRows, error: qErr } = await client
+    .from("quotes")
+    .select("quote_id, client, payload, updated_at")
+    .eq("user_id", currentUser.id);
   if(qErr) return { ok:false, error:qErr.message };
 
-  const { data: itemRows, error: iErr } = await client.from("item_library").select("item_id, name, payload, updated_at");
+  const { data: itemRows, error: iErr } = await client
+    .from("item_library")
+    .select("item_id, name, payload, updated_at")
+    .eq("user_id", currentUser.id);
   if(iErr) return { ok:false, error:iErr.message };
 
   library = (quoteRows || []).map(r => {
@@ -1847,10 +1872,12 @@ async function cloudPullAll(){
 async function cloudPushAll(){
   const client = getSupabaseClient();
   if(!client) return { ok:false, error:"Cloud non configurato" };
+  if(!currentUser) return { ok:false, error:"Utente non autenticato" };
 
   for(const snap of library){
     const payload = {
       quote_id: snap.quoteId || snap.id,
+      user_id: currentUser.id,
       client: snap.client,
       payload: snap.state,
       updated_at: new Date().toISOString()
@@ -1862,6 +1889,7 @@ async function cloudPushAll(){
   for(const item of itemLibrary){
     const payload = {
       item_id: item.id,
+      user_id: currentUser.id,
       name: item.name,
       payload: item,
       updated_at: new Date().toISOString()
