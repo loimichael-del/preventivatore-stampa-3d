@@ -875,16 +875,18 @@ function handleUserChange(newUser) {
   const lastUserId = localStorage.getItem(LAST_USER_KEY);
   const newUserId = newUser?.id || "";
 
-  if (newUserId && lastUserId && lastUserId !== newUserId) {
-    console.log("🔄 User changed, clearing local data cache");
-    resetLocalDataForUserChange();
-    dataLoadedOnce = false;
-  }
-
   if (newUserId) {
+    if (!lastUserId || lastUserId !== newUserId) {
+      console.log("🔄 User changed, clearing local data cache");
+      resetLocalDataForUserChange();
+      dataLoadedOnce = false;
+    }
     localStorage.setItem(LAST_USER_KEY, newUserId);
   } else {
-    localStorage.removeItem(LAST_USER_KEY);
+    console.log("🔄 Logout, clearing local data cache");
+    resetLocalDataForUserChange();
+    dataLoadedOnce = false;
+    // non rimuoviamo LAST_USER_KEY per confrontarlo al prossimo login
   }
 }
 
