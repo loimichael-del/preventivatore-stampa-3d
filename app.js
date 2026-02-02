@@ -378,27 +378,22 @@ async function supabaseUpsertQuote(quoteData) {
   }
   
   const sb = getAuthSupabaseClient();
+  
+  // Struttura corretta per la tabella quotes di Supabase
   const dataToSave = {
-    user_id: currentUser.id,
-    ...quoteData,
+    quote_id: quoteData.id || `quote_${Date.now()}`,
+    client: quoteData.client || "N/A",
+    payload: quoteData, // Tutto il preventivo va in payload come JSONB
     updated_at: new Date().toISOString()
   };
   
   try {
-    let result;
-    if (quoteData.id) {
-      // Update existing quote
-      result = await sb
-        .from("quotes")
-        .update(dataToSave)
-        .eq("id", quoteData.id)
-        .eq("user_id", currentUser.id);
-    } else {
-      // Insert new quote
-      result = await sb
-        .from("quotes")
-        .insert([{ ...dataToSave, created_at: new Date().toISOString() }]);
-    }
+    // Usa upsert per INSERT o UPDATE automatico
+    const result = await sb
+      .from("quotes")
+      .upsert(dataToSave, {
+        onConflict: 'quote_id'
+      });
     
     if (result.error) {
       console.error("Supabase upsert error:", result.error);
