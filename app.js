@@ -313,7 +313,7 @@ async function authLogout() {
   const sb = getAuthSupabaseClient();
   try {
     console.log("🟡 Calling signOut...");
-    const { error } = await sb.auth.signOut();
+    const { error } = await sb.auth.signOut({ scope: 'local' });
     
     if (error) {
       console.error("🔴 SignOut error:", error);
@@ -324,15 +324,26 @@ async function authLogout() {
     console.log("🟢 SignOut successful");
     
     // Verifica che la sessione sia veramente terminata
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await new Promise(resolve => setTimeout(resolve, 150));
     
     const { data: { user } } = await sb.auth.getUser();
     console.log("🟣 Verified user state after logout:", user ? "STILL LOGGED IN" : "LOGGED OUT");
     
+    // Clear all localStorage to ensure clean state
+    const allKeys = Object.keys(localStorage);
+    for (let key of allKeys) {
+      if (key.includes('STORAGE_') || key.includes('::') || key === 'activeUserId') {
+        localStorage.removeItem(key);
+        console.log("🟠 Cleared localStorage key:", key);
+      }
+    }
+    
     currentUser = null;
+    activeUserId = "anon";
     clearAuthError();
     clearAuthForms();
     handleUserChange(null);
+    dataLoadedOnce = false;
     console.log("🟢 Showing auth screen...");
     showAuthScreen();
   } catch (err) {
