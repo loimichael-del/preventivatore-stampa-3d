@@ -603,6 +603,62 @@ async function supabaseUpsertItem(itemData) {
   }
 }
 
+async function supabaseDeleteQuote(quoteId) {
+  if (!currentUser) {
+    console.log("User not logged in, cannot delete quote");
+    return { ok: false, error: "User not logged in" };
+  }
+  
+  const sb = getAuthSupabaseClient();
+  
+  try {
+    const { error } = await sb
+      .from("quotes")
+      .delete()
+      .eq("quote_id", quoteId)
+      .eq("user_id", currentUser.id);
+    
+    if (error) {
+      console.error("Supabase delete quote error:", error);
+      return { ok: false, error: error.message };
+    }
+    
+    console.log("Quote deleted from Supabase:", quoteId);
+    return { ok: true };
+  } catch (err) {
+    console.error("Exception in supabaseDeleteQuote:", err);
+    return { ok: false, error: err.message };
+  }
+}
+
+async function supabaseDeleteItem(itemId) {
+  if (!currentUser) {
+    console.log("User not logged in, cannot delete item");
+    return { ok: false, error: "User not logged in" };
+  }
+  
+  const sb = getAuthSupabaseClient();
+  
+  try {
+    const { error } = await sb
+      .from("item_library")
+      .delete()
+      .eq("item_id", itemId)
+      .eq("user_id", currentUser.id);
+    
+    if (error) {
+      console.error("Supabase delete item error:", error);
+      return { ok: false, error: error.message };
+    }
+    
+    console.log("Item deleted from Supabase:", itemId);
+    return { ok: true };
+  } catch (err) {
+    console.error("Exception in supabaseDeleteItem:", err);
+    return { ok: false, error: err.message };
+  }
+}
+
 async function supabaseLoadItems() {
   if (!currentUser) {
     console.log("User not logged in, cannot load items");
@@ -2493,6 +2549,15 @@ if(ui.itemLibraryModal){
       itemLibrary = itemLibrary.filter(x=>x.id!==id);
       saveItemLibrary(itemLibrary);
       renderItemLibrary();
+      
+      // Delete from Supabase
+      if (currentUser) {
+        supabaseDeleteItem(id).then(result => {
+          if (!result.ok) {
+            console.warn("Errore eliminazione articolo cloud:", result.error);
+          }
+        });
+      }
       return;
     }
 
@@ -2537,6 +2602,15 @@ if(ui.itemsListView){
       itemLibrary = itemLibrary.filter(x=>x.id!==id);
       saveItemLibrary(itemLibrary);
       renderItemsView();
+      
+      // Delete from Supabase
+      if (currentUser) {
+        supabaseDeleteItem(id).then(result => {
+          if (!result.ok) {
+            console.warn("Errore eliminazione articolo cloud:", result.error);
+          }
+        });
+      }
       return;
     }
 
@@ -2712,6 +2786,15 @@ if(ui.libraryList){
       library = library.filter(x=>x.id!==id);
       saveLibrary(library);
       renderLibrary();
+      
+      // Delete from Supabase
+      if (currentUser) {
+        supabaseDeleteQuote(id).then(result => {
+          if (!result.ok) {
+            console.warn("Errore eliminazione cloud:", result.error);
+          }
+        });
+      }
     }
   });
 }
