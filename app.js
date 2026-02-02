@@ -90,6 +90,28 @@ async function initSupabase() {
         showAuthScreen();
       }
     });
+    
+    // Sincronizza stato quando la pagina torna in focus
+    document.addEventListener("visibilitychange", async () => {
+      if (document.visibilityState === "visible") {
+        console.log("📱 Page became visible, syncing auth state...");
+        const { data: { user } } = await sb.auth.getUser();
+        
+        // Se lo stato è cambiato, aggiorna
+        if (user && !currentUser) {
+          console.log("✅ User logged in from another tab");
+          handleUserChange(user);
+          currentUser = user;
+          await ensureUserProfile(sb, user);
+          showMainApp();
+        } else if (!user && currentUser) {
+          console.log("✅ User logged out from another tab");
+          currentUser = null;
+          handleUserChange(null);
+          showAuthScreen();
+        }
+      }
+    });
   }
 }
 
