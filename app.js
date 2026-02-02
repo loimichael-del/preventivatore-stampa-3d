@@ -57,10 +57,12 @@ async function initSupabase() {
   // Check if user is already logged in
   const { data: { user } } = await sb.auth.getUser();
   if (user) {
+    handleUserChange(user);
     currentUser = user;
     await ensureUserProfile(sb, user);
     showMainApp();
   } else {
+    handleUserChange(null);
     showAuthScreen();
   }
   
@@ -71,11 +73,13 @@ async function initSupabase() {
     sb.auth.onAuthStateChange(async (event, session) => {
       console.log("🔴 Auth state changed:", event);
       if (session?.user) {
+        handleUserChange(session.user);
         currentUser = session.user;
         await ensureUserProfile(sb, session.user);
         showMainApp();
       } else {
         currentUser = null;
+        handleUserChange(null);
         showAuthScreen();
       }
     });
@@ -851,6 +855,38 @@ const LIBRARY_KEY = "preventivatore3d_library_v1";
 const ITEM_LIBRARY_KEY = "preventivatore3d_item_library_v1";
 const CLOUD_KEY = "preventivatore3d_cloud_settings_v1";
 const THEME_KEY = "preventivatore3d_theme_v1";
+const LAST_USER_KEY = "preventivatore3d_last_user_id_v1";
+
+function resetLocalDataForUserChange() {
+  localStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem(LIBRARY_KEY);
+  localStorage.removeItem(ITEM_LIBRARY_KEY);
+
+  state = structuredClone(DEFAULTS);
+  library = [];
+  itemLibrary = [];
+
+  saveState(state);
+  saveLibrary(library);
+  saveItemLibrary(itemLibrary);
+}
+
+function handleUserChange(newUser) {
+  const lastUserId = localStorage.getItem(LAST_USER_KEY);
+  const newUserId = newUser?.id || "";
+
+  if (newUserId && lastUserId && lastUserId !== newUserId) {
+    console.log("🔄 User changed, clearing local data cache");
+    resetLocalDataForUserChange();
+    dataLoadedOnce = false;
+  }
+
+  if (newUserId) {
+    localStorage.setItem(LAST_USER_KEY, newUserId);
+  } else {
+    localStorage.removeItem(LAST_USER_KEY);
+  }
+}
 
 const DEFAULTS = {
   order: { client: "", setupMode: "ORDER", quoteId: "", status: "DRAFT" },
