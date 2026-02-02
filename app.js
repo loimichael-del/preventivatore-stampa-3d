@@ -200,8 +200,9 @@ async function authSignUp() {
       const { error: profileError } = await sb.from("user_profiles").insert({
         id: data.user.id,
         email: email,
-        company: company || "N/A",
-        created_at: new Date().toISOString()
+        first_name: company || "N/A",
+        last_name: "",
+        company_name: company || "N/A"
       });
       
       if (profileError) {
@@ -379,16 +380,31 @@ async function loadUserProfile() {
   console.log("Fetching user profile from DB...");
   const { data, error } = await sb
     .from("user_profiles")
-    .select("*")
+    .select("first_name, last_name, company_name")
     .eq("id", currentUser.id)
     .single();
   
   console.log("User profile data:", data, "Error:", error);
   
+  // Load first_name
+  const userFirstNameEl = $("userFirstName");
+  if (data && userFirstNameEl) {
+    userFirstNameEl.value = data.first_name || "";
+    console.log("Set first_name to:", data.first_name);
+  }
+  
+  // Load last_name
+  const userLastNameEl = $("userLastName");
+  if (data && userLastNameEl) {
+    userLastNameEl.value = data.last_name || "";
+    console.log("Set last_name to:", data.last_name);
+  }
+  
+  // Load company_name
   const userCompanyEl = $("userCompany");
   if (data && userCompanyEl) {
-    userCompanyEl.value = data.company || "";
-    console.log("Set userCompany to:", data.company);
+    userCompanyEl.value = data.company_name || "";
+    console.log("Set company_name to:", data.company_name);
   }
   
   console.log("=== loadUserProfile END ===");
@@ -548,13 +564,19 @@ async function supabaseLoadItems() {
 async function saveUserProfile() {
   if (!currentUser) return;
   
-  const company = document.getElementById("userCompany").value;
+  const firstName = document.getElementById("userFirstName")?.value || "";
+  const lastName = document.getElementById("userLastName")?.value || "";
+  const company = document.getElementById("userCompany")?.value || "";
   const sb = getAuthSupabaseClient();
   
   try {
     const { data, error } = await sb
       .from("user_profiles")
-      .update({ company })
+      .update({ 
+        first_name: firstName,
+        last_name: lastName,
+        company_name: company
+      })
       .eq("id", currentUser.id);
     
     if (error) {
