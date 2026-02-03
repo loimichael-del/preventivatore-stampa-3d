@@ -3127,6 +3127,7 @@ if(ui.itemEditSave){
     debugLog("✅ Salvato nel localStorage");
 
     // Auto-sync to Supabase if user is logged in
+    debugLog(`🔍 currentUser check: ${currentUser ? 'LOGGED IN (' + currentUser.id.substring(0,8) + ')' : 'NULL/UNDEFINED'}`);
     if (currentUser) {
       debugLog("☁️ Sync con Supabase...");
       supabaseUpsertItem(newItem).then(result => {
