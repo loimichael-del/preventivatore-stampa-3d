@@ -1689,12 +1689,14 @@ function itemTemplate(it, idx){
       </div>
 
       <div class="field span2">
-        <label>Carica immagine (file o fotocamera)</label>
+        <label>Carica immagine</label>
         <div style="display: flex; gap: 8px;">
-          <input data-k="imageFile" type="file" accept="image/*" capture="environment" style="flex: 1;" />
-          <button type="button" data-act="capturePhoto" style="padding: 8px 12px; background: var(--primary); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 13px;">📷</button>
+          <input data-k="imageFile" type="file" accept="image/*" style="display: none;" />
+          <input data-k="imageCamera" type="file" accept="image/*" capture="environment" style="display: none;" />
+          <button type="button" data-act="pickGallery" style="flex: 1; padding: 10px; background: var(--primary); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px;">🖼️ Galleria</button>
+          <button type="button" data-act="capturePhoto" style="flex: 1; padding: 10px; background: var(--primary); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px;">📷 Fotocamera</button>
         </div>
-        <p style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">💡 Su smartphone: clicca il file oppure il bottone 📷 per usare la fotocamera</p>
+        <p style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">💡 Carica da galleria o scatta una foto</p>
       </div>
 
       <div class="field span2">
@@ -3490,10 +3492,51 @@ ui.items.addEventListener("click", (e)=>{
   if(action === "pickItem"){
     openItemLibrary(id);
   }
-  if(action === "capturePhoto"){
+  if(action === "pickGallery"){
     const fileInput = e.target.closest(".item")?.querySelector("input[data-k='imageFile']");
     if(fileInput) fileInput.click();
   }
+  if(action === "capturePhoto"){
+    const fileInput = e.target.closest(".item")?.querySelector("input[data-k='imageCamera']");
+    if(fileInput) fileInput.click();
+  }
+});
+
+// Listener per upload immagine nella commessa
+ui.items.addEventListener("change", (e)=>{
+  const input = e.target.closest("input[data-k='imageFile'], input[data-k='imageCamera']");
+  if(!input) return;
+  
+  const file = input.files?.[0];
+  if(!file) return;
+  
+  const wrap = e.target.closest(".item");
+  const id = wrap?.getAttribute("data-id");
+  if(!id) {
+    console.log("❌ Could not find item ID");
+    return;
+  }
+  
+  console.log("✅ Item ID found:", id);
+  ui.note.innerHTML = `<span class="mini">Caricamento immagine...</span>`;
+  
+  uploadItemImage(file).then((url)=>{
+    readItemsFromDOM();
+    const idx = state.items.findIndex(x=>x.id===id);
+    if(idx === -1) {
+      console.log("❌ Item not found after upload");
+      return;
+    }
+    state.items[idx].imageUrl = url;
+    console.log("✅ Item updated with image URL");
+    saveState(state);
+    renderItems();
+    render();
+    ui.note.innerHTML = `<span class="ok">✅ Immagine caricata e salvata.</span>`;
+  }).catch((err)=>{
+    console.error("❌ Upload error:", err);
+    ui.note.innerHTML = `<span class="warn">Errore upload immagine: ${escapeHtml(err.message || "")}</span>`;
+  });
 });
 
 // Init
