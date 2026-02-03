@@ -1,48 +1,4 @@
 /* ===========================
-   Debug Panel & Logging
-=========================== */
-let debugLogs = [];
-const maxDebugLogs = 200;
-
-function addDebugLog(msg) {
-  const timestamp = new Date().toLocaleTimeString('it-IT');
-  const logEntry = `[${timestamp}] ${msg}`;
-  debugLogs.push(logEntry);
-  if(debugLogs.length > maxDebugLogs) debugLogs.shift();
-  
-  // Aggiorna il pannello visibile
-  const logEl = document.getElementById('debugLog');
-  if(logEl) {
-    logEl.innerHTML = debugLogs.map(l => `<div>${escapeHtml(l)}</div>`).join('');
-    logEl.scrollTop = logEl.scrollHeight;
-  }
-  
-  // Mostra il bottone debug
-  const btn = document.getElementById('debugToggle');
-  if(btn && btn.style.display === 'none') btn.style.display = 'block';
-}
-
-function toggleDebugPanel() {
-  const panel = document.getElementById('debugPanel');
-  if(panel) panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
-}
-
-// Intercetta console.log per il debug panel
-const originalLog = console.log;
-console.log = function(...args) {
-  originalLog.apply(console, args);
-  const msg = args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ');
-  addDebugLog(msg);
-};
-
-const originalError = console.error;
-console.error = function(...args) {
-  originalError.apply(console, args);
-  const msg = '❌ ' + args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ');
-  addDebugLog(msg);
-};
-
-/* ===========================
    Utils
 =========================== */
 const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
@@ -2299,67 +2255,35 @@ async function cloudPushAll(){
   return { ok:true };
 }
 
-// Helper per logging visibile su smartphone
-function debugLog(message, isError = false) {
-  console.log(message);
-  const debugEl = document.getElementById('uploadDebugLog');
-  if(debugEl) {
-    const line = document.createElement('div');
-    line.style.color = isError ? '#ff0000' : '#00ff00';
-    line.style.marginBottom = '4px';
-    line.textContent = message;
-    debugEl.appendChild(line);
-    debugEl.scrollTop = debugEl.scrollHeight;
-    
-    // Assicurati che sia visibile
-    debugEl.style.display = 'block';
-  } else {
-    // Fallback: usa alert solo per errori critici
-    if(isError) {
-      alert('ERROR: ' + message);
-    }
-  }
-}
-
-function clearDebugLog() {
-  const debugEl = document.getElementById('uploadDebugLog');
-  if(debugEl) {
-    debugEl.innerHTML = '';
-    debugEl.textContent = '=== DEBUG LOG ===\n';
-  }
-}
-
 async function uploadItemImage(file){
-  clearDebugLog();
-  debugLog("🔵 Upload iniziato");
-  debugLog(`📁 File: ${file.name} (${Math.round(file.size/1024)}KB)`);
+  console.log(`📁 File: ${file.name} (${Math.round(file.size/1024)}KB)`);
   
   // Verifica che l'utente sia autenticato
-  debugLog("🔵 Verifica autenticazione...");
+  console.log("🔵 Verifica autenticazione...");
   
   if(!currentUser) {
-    debugLog("🟠 Non autenticato - uso base64", true);
+    console.log("🟠 Non autenticato - uso base64");
     return fileToBase64(file);
   }
   
-  debugLog(`✅ User: ${currentUser.id.substring(0, 8)}...`);
+  console.log(`✅ User: ${currentUser.id.substring(0, 8)}...`);
   
   // Prova con client autenticato
-  debugLog("🔵 Ottengo client Supabase...");
+  console.log("🔵 Ottengo client Supabase...");
   let client = getAuthSupabaseClient();
   
   if(!client){
-    debugLog("🟠 Client non disponibile - uso base64", true);
+    console.log("🟠 Client non disponibile - uso base64");
     return fileToBase64(file);
   }
   
-  debugLog("✅ Client OK");
+  console.log("✅ Client OK");
 
   try {
-    debugLog("🔵 Inizio upload a Supabase Storage...");
+    console.log("🔵 Inizio upload a Supabase Storage...");
     const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
     const path = `${currentUser.id}/${Date.now()}_${uid()}_${safeName}`;
-    debugLog(`📍 Path: ${path.substring(0, 40)}...`);
+    console.log(`📍 Path: ${path.substring(0, 40)}...`);
     
     const { data: uploadData, error } = await client.storage
       .from("item-images")
@@ -2369,28 +2293,28 @@ async function uploadItemImage(file){
       });
     
     if(error) {
-      debugLog("🔴 ERRORE UPLOAD!", true);
-      debugLog(`🔴 ${error.message}`, true);
-      if(error.statusCode) debugLog(`🔴 Status: ${error.statusCode}`, true);
+      console.error("🔴 ERRORE UPLOAD!");
+      console.error(`🔴 ${error.message}`);
+      if(error.statusCode) console.error(`🔴 Status: ${error.statusCode}`);
       throw new Error(error.message);
     }
     
-    debugLog("✅ Upload completato!");
+    console.log("✅ Upload completato!");
     
     const { data: urlData } = client.storage.from("item-images").getPublicUrl(path);
     const publicUrl = urlData?.publicUrl || "";
     
     if(!publicUrl) {
-      debugLog("🔴 URL pubblico vuoto!", true);
+      console.error("🔴 URL pubblico vuoto!");
       throw new Error("URL pubblico non generato");
     }
     
-    debugLog(`✅ URL: ${publicUrl.substring(0, 50)}...`);
+    console.log(`✅ URL: ${publicUrl.substring(0, 50)}...`);
     return publicUrl;
   } catch(err) {
-    debugLog("🔴 ECCEZIONE!", true);
-    debugLog(`🔴 ${err.message}`, true);
-    debugLog("🟠 Fallback a base64...");
+    console.error("🔴 ECCEZIONE!");
+    console.error(`🔴 ${err.message}`);
+    console.log("🟠 Fallback a base64...");
     return fileToBase64(file);
   }
 }
@@ -2965,19 +2889,19 @@ if(ui.itemEditMaterialOverride){
 
 // Funzione comune per gestire l'upload
 const handleImageUpload = (file, source) => {
-  debugLog(`📷 Click da ${source}`);
+
   
   if(!file) {
-    debugLog("❌ Nessun file selezionato", true);
+
     ui.note.innerHTML = `<span class="warn">❌ Nessun file selezionato</span>`;
     return;
   }
   
-  debugLog(`📁 File: ${file.name} (${Math.round(file.size/1024)}KB)`);
+
   
   // Verifica dimensione file (max 5MB)
   if(file.size > 5 * 1024 * 1024) {
-    debugLog("❌ File troppo grande (max 5MB)", true);
+
     ui.note.innerHTML = `<span class="warn">❌ File troppo grande (max 5MB)</span>`;
     return;
   }
@@ -2990,28 +2914,28 @@ const handleImageUpload = (file, source) => {
     reader.onload = (e) => {
       ui.itemImagePreviewImg.src = e.target.result;
       ui.itemImagePreview.style.display = 'block';
-      debugLog("✅ Preview mostrata");
+
     };
     reader.readAsDataURL(file);
   }
   
-  debugLog("🔄 Avvio upload...");
+
   
   uploadItemImage(file).then((url)=>{
-    debugLog("✅ Upload completato!");
-    debugLog(`📍 URL length: ${url.length}`);
+
+
     
     if(ui.itemEditImageUrl) {
       ui.itemEditImageUrl.value = url;
-      debugLog("✅ Campo URL aggiornato");
+
     } else {
-      debugLog("❌ Campo URL non trovato!", true);
+
     }
     
     ui.note.innerHTML = `<span class="ok">✓ Immagine pronta! Clicca "Salva articolo".</span>`;
   }).catch((err)=>{
-    debugLog("❌ ERRORE!", true);
-    debugLog(`❌ ${err.message}`, true);
+
+
     ui.note.innerHTML = `<span class="warn">❌ Errore: ${escapeHtml(err.message || "Upload fallito")}</span>`;
     if(ui.itemImagePreview) ui.itemImagePreview.style.display = 'none';
   });
@@ -3019,7 +2943,7 @@ const handleImageUpload = (file, source) => {
 
 if(ui.itemEditImageFile){
   ui.itemEditImageFile.addEventListener("change", (e)=>{
-    debugLog("🖼️ Event CHANGE galleria");
+
     const file = e.target.files?.[0];
     handleImageUpload(file, "galleria");
     e.target.value = ""; // Reset per permettere stessa foto
@@ -3028,7 +2952,7 @@ if(ui.itemEditImageFile){
 
 if(ui.itemEditCameraCapture){
   ui.itemEditCameraCapture.addEventListener("change", (e)=>{
-    debugLog("📷 Event CHANGE fotocamera");
+
     const file = e.target.files?.[0];
     handleImageUpload(file, "fotocamera");
     e.target.value = ""; // Reset per permettere stessa foto
@@ -3038,16 +2962,16 @@ if(ui.itemEditCameraCapture){
 if(ui.itemEditGalleryBtn){
   ui.itemEditGalleryBtn.addEventListener("click", (e)=>{
     e.preventDefault();
-    clearDebugLog();
-    debugLog("=== CLICK GALLERIA ===");
-    debugLog("Timestamp: " + new Date().toLocaleTimeString());
+    
+
+
     
     if(ui.itemEditImageFile) {
-      debugLog("✅ Input file trovato");
-      debugLog("Apertura selezione file...");
+
+
       ui.itemEditImageFile.click();
     } else {
-      debugLog("❌ Input file NON trovato!", true);
+
       alert("ERRORE: Input file non trovato!");
     }
   });
@@ -3056,16 +2980,16 @@ if(ui.itemEditGalleryBtn){
 if(ui.itemEditCameraBtn){
   ui.itemEditCameraBtn.addEventListener("click", (e)=>{
     e.preventDefault();
-    clearDebugLog();
-    debugLog("=== CLICK FOTOCAMERA ===");
-    debugLog("Timestamp: " + new Date().toLocaleTimeString());
+    
+
+
     
     if(ui.itemEditCameraCapture) {
-      debugLog("✅ Input camera trovato");
-      debugLog("Apertura fotocamera...");
+
+
       ui.itemEditCameraCapture.click();
     } else {
-      debugLog("❌ Input camera NON trovato!", true);
+
       alert("ERRORE: Input camera non trovato!");
     }
   });
@@ -3074,19 +2998,19 @@ if(ui.itemEditCameraBtn){
 if(ui.itemEditSave){
   ui.itemEditSave.addEventListener("click", ()=>{
     console.log("🔴🔴🔴 CLICK SALVA ARTICOLO HANDLER TRIGGERED 🔴🔴🔴");
-    debugLog("💾 Click Salva articolo");
+
     
     const name = ui.itemEditName?.value?.trim();
     if(!name){
-      debugLog("❌ Nome mancante", true);
+
       ui.note.innerHTML = `<span class="warn">Inserisci un nome per l'articolo.</span>`;
       return;
     }
 
     const imageUrl = ui.itemEditImageUrl?.value?.trim() || "";
-    debugLog(`📦 ImageUrl: ${imageUrl.length} chars`);
+
     if(imageUrl.length > 0) {
-      debugLog(`📍 URL type: ${imageUrl.startsWith('data:') ? 'base64' : 'URL'}`);
+
     }
     
     const newItem = {
@@ -3111,44 +3035,44 @@ if(ui.itemEditSave){
       imageUrlLength: newItem.imageUrl.length
     });
 
-    debugLog("💾 Salvando localmente...");
+
     
     if(currentEditItemId){
       const idx = itemLibrary.findIndex(x=>x.id===currentEditItemId);
       if(idx !== -1){
         itemLibrary[idx] = newItem;
-        debugLog("✅ Articolo aggiornato");
+
         ui.note.innerHTML = `<span class="ok">Articolo aggiornato.</span>`;
       }
     }else{
       itemLibrary.unshift(newItem);
-      debugLog("✅ Articolo creato");
+
       ui.note.innerHTML = `<span class="ok">Articolo creato.</span>`;
     }
 
     saveItemLibrary(itemLibrary);
-    debugLog("✅ Salvato nel localStorage");
+
 
     // Auto-sync to Supabase if user is logged in
-    debugLog(`🔍 currentUser check: ${currentUser ? 'LOGGED IN (' + currentUser.id.substring(0,8) + ')' : 'NULL/UNDEFINED'}`);
+
     if (currentUser) {
-      debugLog("☁️ Sync con Supabase...");
+
       supabaseUpsertItem(newItem).then(result => {
-        debugLog(`☁️ Sync result: ${result.ok ? 'OK' : 'FAIL'}`);
+
         if (!result.ok) {
-          debugLog(`❌ Errore: ${result.error}`, true);
+
           ui.note.innerHTML += ` <span class="warn">Errore cloud: ${result.error}</span>`;
         } else {
-          debugLog("✅ Sincronizzato!");
+
           ui.note.innerHTML += ` <span style="color: var(--success);">✓ Sincronizzato al cloud</span>`;
         }
       }).catch(err => {
-        debugLog(`❌ Eccezione sync: ${err.message}`, true);
+
       });
     } else {
-      debugLog("⚠️ currentUser NULL - skip sync Supabase");
+
       if (cloud.enabled) {
-        debugLog("🔄 Tentativo cloud legacy...");
+
         cloudUpsertItem(newItem).then(res=>{
           if (!res.ok && ui.cloudStatus) ui.cloudStatus.textContent = `Cloud: ${res.error}`;
         });

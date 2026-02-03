@@ -8,17 +8,6 @@
 </head>
 
 <body>
-<!-- ===== DEBUG PANEL ===== -->
-<div id="debugPanel" style="position: fixed; bottom: 0; right: 0; width: 100%; max-width: 400px; max-height: 250px; background: #1a1a1a; color: #00ff00; font-family: monospace; font-size: 11px; border: 2px solid #00ff00; border-radius: 8px; padding: 8px; overflow-y: auto; z-index: 99999; display: none;">
-  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid #00ff00;">
-    <strong>DEBUG LOG</strong>
-    <button onclick="document.getElementById('debugPanel').style.display='none'" style="background: #00ff00; color: #000; border: none; padding: 2px 6px; border-radius: 3px; cursor: pointer; font-weight: bold;">✕</button>
-  </div>
-  <div id="debugLog"></div>
-</div>
-
-<button id="debugToggle" onclick="toggleDebugPanel()" style="position: fixed; bottom: 10px; right: 10px; z-index: 99998; padding: 8px 12px; background: #00ff00; color: #000; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; display: none;">🐛 DEBUG</button>
-
 <!-- ===== AUTH SCREEN ===== -->
 <section id="view-auth" class="view view-active view-auth">
   <div class="auth-container">
@@ -377,7 +366,9 @@
       </div>
 
       <p class="note" style="margin-top:0;">Crea, modifica o carica articoli nella tua libreria.</p>
-      <p style="background: #FFD700; border: 3px solid #FF6B00; padding: 15px; border-radius: 8px; margin: 15px 0; font-size: 18px; color: #000; font-weight: bold; text-align: center;">📊 Salvati: <span id="itemCountValue" style="font-size: 24px; color: #FF0000;">0</span></p>
+      <p style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px 16px; border-radius: 8px; margin: 12px 0; font-size: 14px; font-weight: 500; text-align: center; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);">
+        📊 <strong>Articoli salvati: </strong><span id="itemCountValue" style="font-size: 18px; font-weight: bold;">0</span>
+      </p>
       
       <details class="accordion" id="itemEditAccordion">
         <summary>Crea/Modifica articolo</summary>
