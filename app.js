@@ -1237,12 +1237,14 @@ function saveLibrary(list){ localStorage.setItem(getUserScopedKey(LIBRARY_KEY), 
 function loadItemLibrary(){
   try{
     const key = getUserScopedKey(ITEM_LIBRARY_KEY);
-    console.log(`📂 Caricando articoli da: "${key}"`);
+    const activeId = activeUserId;
+    console.log(`📂 Caricando articoli da: "${key}" (activeUserId=${activeId})`);
     const raw = localStorage.getItem(key);
     console.log(`📂 Dati trovati: ${raw ? 'SI (' + raw.length + ' chars)' : 'NO'}`);
     if(!raw) {
       const countEl = document.getElementById('itemCountValue');
       if(countEl) countEl.textContent = '0';
+      console.log(`📂 ⚠️ Nessun dato nel localStorage per "${key}"`);
       return [];
     }
     const parsed = JSON.parse(raw);
@@ -1252,8 +1254,10 @@ function loadItemLibrary(){
     const countEl = document.getElementById('itemCountValue');
     if(countEl) countEl.textContent = items.length;
     
+    console.log(`📂 ✅ Caricati ${items.length} articoli da localStorage (key="${key}")`);
     return items;
-  }catch{
+  }catch(e){
+    console.error(`📂 ❌ Errore caricamento: ${e.message}`);
     const countEl = document.getElementById('itemCountValue');
     if(countEl) countEl.textContent = '0';
     return [];
@@ -1261,8 +1265,14 @@ function loadItemLibrary(){
 }
 function saveItemLibrary(list){ 
   const key = getUserScopedKey(ITEM_LIBRARY_KEY);
-  console.log(`💾 Salvando ${list.length} articoli con chiave: "${key}"`);
-  localStorage.setItem(key, JSON.stringify(list));
+  const activeId = activeUserId;
+  console.log(`💾 Salvando ${list.length} articoli con chiave: "${key}" (activeUserId=${activeId})`);
+  try{
+    localStorage.setItem(key, JSON.stringify(list));
+    console.log(`💾 ✅ Salvati ${list.length} articoli in "${key}"`);
+  }catch(e){
+    console.error(`💾 ❌ Errore salvataggio: ${e.message}`);
+  }
   
   // Aggiorna il debug badge
   const countEl = document.getElementById('itemCountValue');
