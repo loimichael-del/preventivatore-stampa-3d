@@ -3143,10 +3143,14 @@ if(ui.itemEditSave){
       }).catch(err => {
         debugLog(`❌ Eccezione sync: ${err.message}`, true);
       });
-    } else if (cloud.enabled) {
-      cloudUpsertItem(newItem).then(res=>{
-        if (!res.ok && ui.cloudStatus) ui.cloudStatus.textContent = `Cloud: ${res.error}`;
-      });
+    } else {
+      debugLog("⚠️ currentUser NULL - skip sync Supabase");
+      if (cloud.enabled) {
+        debugLog("🔄 Tentativo cloud legacy...");
+        cloudUpsertItem(newItem).then(res=>{
+          if (!res.ok && ui.cloudStatus) ui.cloudStatus.textContent = `Cloud: ${res.error}`;
+        });
+      }
     }
 
     clearItemEditForm();
