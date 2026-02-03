@@ -3467,26 +3467,48 @@ ui.items.addEventListener("click", (e)=>{
     readItemsFromDOM();
     const found = state.items.find(x=>x.id===id);
     if(!found) return;
-    const newItem = normalizeItemForLibrary(found);
-    itemLibrary.unshift(newItem);
-    saveItemLibrary(itemLibrary);
-    renderItemLibrary();
-    ui.note.innerHTML = `<span class="ok">Articolo salvato nello storico.</span>`;
     
-    // Auto-sync to Supabase if user is logged in
-    if (currentUser) {
-      supabaseUpsertItem(newItem).then(result => {
-        if (!result.ok) {
-          ui.note.innerHTML += ` <span class="warn">Errore cloud: ${result.error}</span>`;
-        } else {
-          ui.note.innerHTML += ` <span style="color: var(--success);">✓ Sincronizzato al cloud</span>`;
+    ui.note.innerHTML = `<span class="mini">Salvataggio articolo...</span>`;
+    
+    // Se l'immagine è ancora base64 (locale), caricala a Supabase PRIMA di salvare
+    const imageUrl = found.imageUrl;
+    const isBase64 = imageUrl && imageUrl.startsWith('data:');
+    
+    const processAndSave = async () => {
+      let finalImageUrl = imageUrl;
+      
+      if(isBase64) {
+        // Convertì base64 a blob e carica a Supabase
+        try {
+          const blob = await fetch(imageUrl).then(r => r.blob());
+          finalImageUrl = await uploadItemImage(blob);
+          console.log("✅ Image uploaded to Supabase:", finalImageUrl);
+        } catch(err) {
+          console.warn("⚠️ Upload fallback, using base64:", err.message);
+          // Se fallisce, mantieni il base64
         }
-      });
-    } else if(cloud.enabled){
-      cloudUpsertItem(newItem).then(res=>{
-        if(!res.ok && ui.cloudStatus) ui.cloudStatus.textContent = `Cloud: ${res.error}`;
-      });
-    }
+      }
+      
+      // Ora salva l'articolo con l'URL finale (Supabase o base64)
+      const newItem = normalizeItemForLibrary({...found, imageUrl: finalImageUrl});
+      itemLibrary.unshift(newItem);
+      saveItemLibrary(itemLibrary);
+      renderItemLibrary();
+      ui.note.innerHTML = `<span class="ok">Articolo salvato nello storico.</span>`;
+      
+      // Auto-sync to Supabase if user is logged in
+      if (currentUser) {
+        supabaseUpsertItem(newItem).then(result => {
+          if (!result.ok) {
+            ui.note.innerHTML += ` <span class="warn">Errore cloud: ${result.error}</span>`;
+          } else {
+            ui.note.innerHTML += ` <span style="color: var(--success);">✓ Sincronizzato al cloud</span>`;
+          }
+        });
+      }
+    };
+    
+    processAndSave();
     return;
   }
   if(action === "pickItem"){
@@ -3518,26 +3540,27 @@ ui.items.addEventListener("change", (e)=>{
   }
   
   console.log("✅ Item ID found:", id);
-  ui.note.innerHTML = `<span class="mini">Caricamento immagine...</span>`;
+  ui.note.innerHTML = `<span class="mini">Compressione immagine...</span>`;
   
-  uploadItemImage(file).then((url)=>{
-    // Aggiorna solo l'URL dell'immagine dell'articolo nella commessa
+  // Comprimi l'immagine a base64 (NON upload a Supabase ancora)
+  compressAndConvertImage(file).then((base64Url)=>{
     const idx = state.items.findIndex(x=>x.id===id);
     if(idx === -1) {
-      console.log("❌ Item not found after upload");
+      console.log("❌ Item not found");
       return;
     }
-    state.items[idx].imageUrl = url;
-    console.log("✅ Item updated with image URL");
     
-    // Salva solo lo state della commessa (NON nello storico)
+    // Salva il base64 localmente (non uploadare a Supabase)
+    state.items[idx].imageUrl = base64Url;
+    console.log("✅ Image compressed and stored locally");
+    
     saveState(state);
     renderItems();
     render();
-    ui.note.innerHTML = `<span class="ok">✅ Immagine caricata. Clicca "Salva articolo" per salvare nello storico.</span>`;
+    ui.note.innerHTML = `<span class="ok">✅ Immagine caricata. Clicca "Salva articolo" per salvare in permanenza.</span>`;
   }).catch((err)=>{
-    console.error("❌ Upload error:", err);
-    ui.note.innerHTML = `<span class="warn">Errore upload immagine: ${escapeHtml(err.message || "")}</span>`;
+    console.error("❌ Compression error:", err);
+    ui.note.innerHTML = `<span class="warn">Errore compressione immagine: ${escapeHtml(err.message || "")}</span>`;
   });
 });
 
