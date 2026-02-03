@@ -1,4 +1,48 @@
 /* ===========================
+   Debug Panel & Logging
+=========================== */
+let debugLogs = [];
+const maxDebugLogs = 50;
+
+function addDebugLog(msg) {
+  const timestamp = new Date().toLocaleTimeString('it-IT');
+  const logEntry = `[${timestamp}] ${msg}`;
+  debugLogs.push(logEntry);
+  if(debugLogs.length > maxDebugLogs) debugLogs.shift();
+  
+  // Aggiorna il pannello visibile
+  const logEl = document.getElementById('debugLog');
+  if(logEl) {
+    logEl.innerHTML = debugLogs.map(l => `<div>${escapeHtml(l)}</div>`).join('');
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+  
+  // Mostra il bottone debug
+  const btn = document.getElementById('debugToggle');
+  if(btn && btn.style.display === 'none') btn.style.display = 'block';
+}
+
+function toggleDebugPanel() {
+  const panel = document.getElementById('debugPanel');
+  if(panel) panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+}
+
+// Intercetta console.log per il debug panel
+const originalLog = console.log;
+console.log = function(...args) {
+  originalLog.apply(console, args);
+  const msg = args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ');
+  addDebugLog(msg);
+};
+
+const originalError = console.error;
+console.error = function(...args) {
+  originalError.apply(console, args);
+  const msg = '❌ ' + args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ');
+  addDebugLog(msg);
+};
+
+/* ===========================
    Utils
 =========================== */
 const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
