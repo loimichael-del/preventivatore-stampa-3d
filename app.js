@@ -3071,6 +3071,7 @@ if(ui.itemEditCameraBtn){
 
 if(ui.itemEditSave){
   ui.itemEditSave.addEventListener("click", ()=>{
+    console.log("🔴🔴🔴 CLICK SALVA ARTICOLO HANDLER TRIGGERED 🔴🔴🔴");
     debugLog("💾 Click Salva articolo");
     
     const name = ui.itemEditName?.value?.trim();
