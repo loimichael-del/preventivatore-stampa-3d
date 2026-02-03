@@ -3521,7 +3521,7 @@ ui.items.addEventListener("change", (e)=>{
   ui.note.innerHTML = `<span class="mini">Caricamento immagine...</span>`;
   
   uploadItemImage(file).then((url)=>{
-    readItemsFromDOM();
+    // Aggiorna solo l'URL dell'immagine dell'articolo nella commessa
     const idx = state.items.findIndex(x=>x.id===id);
     if(idx === -1) {
       console.log("❌ Item not found after upload");
@@ -3529,10 +3529,12 @@ ui.items.addEventListener("change", (e)=>{
     }
     state.items[idx].imageUrl = url;
     console.log("✅ Item updated with image URL");
+    
+    // Salva solo lo state della commessa (NON nello storico)
     saveState(state);
     renderItems();
     render();
-    ui.note.innerHTML = `<span class="ok">✅ Immagine caricata e salvata.</span>`;
+    ui.note.innerHTML = `<span class="ok">✅ Immagine caricata. Clicca "Salva articolo" per salvare nello storico.</span>`;
   }).catch((err)=>{
     console.error("❌ Upload error:", err);
     ui.note.innerHTML = `<span class="warn">Errore upload immagine: ${escapeHtml(err.message || "")}</span>`;
