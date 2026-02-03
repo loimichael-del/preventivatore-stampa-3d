@@ -366,7 +366,8 @@
       </div>
 
       <p class="note" style="margin-top:0;">Crea, modifica o carica articoli nella tua libreria.</p>
-
+      <p style="background: #FFD700; border: 3px solid #FF6B00; padding: 15px; border-radius: 8px; margin: 15px 0; font-size: 18px; color: #000; font-weight: bold; text-align: center;">📊 Salvati: <span id="itemCountValue" style="font-size: 24px; color: #FF0000;">0</span></p>
+      
       <details class="accordion" id="itemEditAccordion">
         <summary>Crea/Modifica articolo</summary>
         <div class="accordion-body">
@@ -379,12 +380,22 @@
               <input id="itemEditImageUrl" placeholder="https://..." />
             </div>
             <div class="field">
-              <label>Carica immagine (file o fotocamera)</label>
-              <div style="display: flex; gap: 8px;">
-                <input id="itemEditImageFile" type="file" accept="image/*" capture="environment" style="flex: 1;" />
-                <button type="button" id="itemEditCapturePhoto" style="padding: 8px 12px; background: var(--primary); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 13px;">📷</button>
+              <label>Carica immagine</label>
+              
+              <!-- DEBUG LOG MOLTO VISIBILE -->
+              <div id="uploadDebugLog" style="margin-bottom: 12px; padding: 12px; background: #000; color: #0f0; border: 3px solid #0f0; border-radius: 8px; font-size: 13px; font-family: monospace; max-height: 200px; overflow-y: auto; white-space: pre-wrap; word-break: break-all;"></div>
+              
+              <div id="itemImagePreview" style="margin-bottom: 8px; padding: 10px; background: #f3f4f6; border-radius: 4px; display: none; text-align: center;">
+                <img id="itemImagePreviewImg" style="max-width: 100%; max-height: 150px; border-radius: 4px;" />
+                <div style="margin-top: 4px; font-size: 12px; color: #10b981;">✓ Immagine pronta per il salvataggio</div>
               </div>
-              <p style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">💡 Su smartphone: clicca il file oppure il bottone 📷 per usare la fotocamera</p>
+              
+              <div style="display: grid; gap: 8px;">
+                <button type="button" id="itemEditGalleryBtn" style="padding: 10px; background: #6366f1; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px;">🖼️ Scegli dalla galleria</button>
+                <button type="button" id="itemEditCameraBtn" style="padding: 10px; background: #10b981; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px;">📷 Scatta foto</button>
+              </div>
+              <input id="itemEditImageFile" type="file" accept="image/*" style="display: none;" />
+              <input id="itemEditCameraCapture" type="file" accept="image/*" capture="environment" style="display: none;" />
             </div>
             <div class="field">              <label>Gruppo (A/B/C)</label>
               <select id="itemEditGroup">
@@ -642,6 +653,6 @@
 </section>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="app.js?v=3"></script>
+<script src="app.js?v=4"></script>
 </body>
 </html>

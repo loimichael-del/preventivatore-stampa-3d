@@ -46,72 +46,115 @@ function getAuthSupabaseClient() {
   return supabaseClient;
 }
 
+// Funzione per aspettare che Supabase sia disponibile
+function waitForSupabase(maxAttempts = 50) {
+  return new Promise((resolve, reject) => {
+    let attempts = 0;
+    const check = () => {
+      attempts++;
+      if (window.supabase) {
+        console.log("✅ Supabase SDK caricato dopo", attempts, "tentativi");
+        resolve(true);
+      } else if (attempts >= maxAttempts) {
+        console.error("❌ Supabase SDK non caricato dopo", maxAttempts, "tentativi");
+        reject(new Error("Supabase SDK non disponibile"));
+      } else {
+        setTimeout(check, 100);
+      }
+    };
+    check();
+  });
+}
+
 async function initSupabase() {
   console.log("🟢 initSupabase called");
-  const sb = getAuthSupabaseClient();
-  if (!sb) {
-    console.error("Supabase non caricato");
+  
+  // IMPORTANTE: imposta sempre l'utente attivo (offline o online)
+  handleUserChange(null);
+  
+  // Aspetta che Supabase sia disponibile
+  try {
+    await waitForSupabase();
+  } catch (err) {
+    console.error("❌ Impossibile caricare Supabase:", err);
+    console.warn("⚠️ Modalità offline - usiamo solo localStorage");
+    // Continua comunque in modalità offline
+    currentUser = null;
+    showMainApp(); // Mostra app anche senza auth
+    console.log("✅ App avviata in modalità OFFLINE");
     return;
   }
   
-  // Check if user is already logged in
-  const { data: { user } } = await sb.auth.getUser();
-  console.log("🟣 Current user from Supabase:", user?.id || "NO USER");
-  
-  if (user) {
-    handleUserChange(user);
-    currentUser = user;
-    await ensureUserProfile(sb, user);
-    showMainApp();
-    console.log("✅ User logged in, showing main app");
-  } else {
-    currentUser = null;
-    handleUserChange(null);
-    showAuthScreen();
-    console.log("✅ No user, showing auth screen");
+  const sb = getAuthSupabaseClient();
+  if (!sb) {
+    console.error("Supabase non caricato");
+    console.warn("⚠️ Modalità offline");
+    showMainApp(); // Mostra app comunque
+    return;
   }
   
-  // Listen for auth changes - SOLO UNA VOLTA
-  if (!authListenerSetup) {
-    console.log("🟡 Setting up auth listener");
-    authListenerSetup = true;
-    sb.auth.onAuthStateChange(async (event, session) => {
-      console.log("🔴 Auth state changed:", event, "Session:", session?.user?.id || "NO SESSION");
-      if (session?.user) {
-        console.log("🟢 User session active");
-        handleUserChange(session.user);
-        currentUser = session.user;
-        await ensureUserProfile(sb, session.user);
-        showMainApp();
-      } else {
-        console.log("🔴 User session ended");
-        currentUser = null;
-        handleUserChange(null);
-        showAuthScreen();
-      }
-    });
+  try {
+    // Check if user is already logged in
+    const { data: { user } } = await sb.auth.getUser();
+    console.log("🟣 Current user from Supabase:", user?.id || "NO USER");
     
-    // Sincronizza stato quando la pagina torna in focus
-    document.addEventListener("visibilitychange", async () => {
-      if (document.visibilityState === "visible") {
-        console.log("📱 Page became visible, syncing auth state...");
-        const { data: { user } } = await sb.auth.getUser();
-        
-        // Se lo stato è cambiato, aggiorna
-        if (user && !currentUser) {
-          console.log("✅ User logged in from another tab");
-          handleUserChange(user);
-          currentUser = user;
-          await ensureUserProfile(sb, user);
-          showMainApp();
-        } else if (!user && currentUser) {
-          console.log("✅ User logged out from another tab");
+    if (user) {
+      handleUserChange(user);
+      currentUser = user;
+      await ensureUserProfile(sb, user);
+      await showMainApp();
+      console.log("✅ User logged in, showing main app");
+    } else {
+      currentUser = null;
+      handleUserChange(null);
+      showAuthScreen();
+      console.log("✅ No user, showing auth screen");
+    }
+    
+    // Listen for auth changes - SOLO UNA VOLTA
+    if (!authListenerSetup) {
+      console.log("🟡 Setting up auth listener");
+      authListenerSetup = true;
+      sb.auth.onAuthStateChange(async (event, session) => {
+        console.log("🔴 Auth state changed:", event, "Session:", session?.user?.id || "NO SESSION");
+        if (session?.user) {
+          console.log("🟢 User session active");
+          handleUserChange(session.user);
+          currentUser = session.user;
+          await ensureUserProfile(sb, session.user);
+          await showMainApp();
+        } else {
+          console.log("🔴 User session ended");
           currentUser = null;
           handleUserChange(null);
           showAuthScreen();
         }
-      }
-    });
+      });
+      
+      // Sincronizza stato quando la pagina torna in focus
+      document.addEventListener("visibilitychange", async () => {
+        if (document.visibilityState === "visible") {
+          console.log("📱 Page became visible, syncing auth state...");
+          const { data: { user } } = await sb.auth.getUser();
+          
+          // Se lo stato è cambiato, aggiorna
+          if (user && !currentUser) {
+            console.log("✅ User logged in from another tab");
+            handleUserChange(user);
+            currentUser = user;
+            await ensureUserProfile(sb, user);
+            await showMainApp();
+          } else if (!user && currentUser) {
+            console.log("✅ User logged out from another tab");
+            currentUser = null;
+            handleUserChange(null);
+            showAuthScreen();
+          }
+        }
+      });
+    }
+  } catch(err) {
+    console.error("❌ Errore in initSupabase:", err);
   }
 }
 
@@ -143,24 +186,66 @@ function showAuthScreen() {
   dataLoadedOnce = false; // Reset quando si fa logout
 }
 
-function showMainApp() {
+async function showMainApp() {
   console.log("🟣 showMainApp called, dataLoadedOnce:", dataLoadedOnce);
   $("view-auth").style.display = "none";
   $("view-main-app").style.display = "flex";
   $("view-main-app").style.flexDirection = "column";
   
-  // Load user's quotes and items from Supabase - SOLO LA PRIMA VOLTA
+  // Carica SEMPRE da localStorage prima di tutto
+  console.log("📂 Caricamento da localStorage...");
+  const savedLibrary = loadLibrary();
+  const savedItems = loadItemLibrary();
+  
+  if(savedLibrary && savedLibrary.length > 0) {
+    library = savedLibrary;
+    console.log("✅ Libreria caricata da localStorage:", library.length, "preventivi");
+  }
+  
+  if(savedItems && savedItems.length > 0) {
+    itemLibrary = savedItems;
+    renderItemLibrary();
+    console.log("✅ Articoli caricati da localStorage:", itemLibrary.length, "articoli");
+  }
+  
+  // Load user's quotes and items from Supabase - SOLO LA PRIMA VOLTA e solo se autenticati
   if (currentUser && !dataLoadedOnce) {
     dataLoadedOnce = true;
     console.log("Loading data from Supabase for the first time...");
     
-    // Load quotes and items in parallel without blocking UI
-    Promise.all([
-      supabaseLoadQuotes(),
-      supabaseLoadItems()
-    ]).then(([quotes, items]) => {
-      console.log("Data loaded:", quotes.length, "quotes,", items.length, "items");
+    // Funzione helper per caricare con retry
+    const loadWithRetry = async (loadFn, name, maxRetries = 3) => {
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+          console.log(`📥 Caricamento ${name} (tentativo ${attempt}/${maxRetries})...`);
+          const result = await loadFn();
+          if (result && Array.isArray(result)) {
+            console.log(`✅ ${name} caricati: ${result.length} elementi`);
+            return result;
+          }
+          console.warn(`⚠️ ${name} ritornato valore non valido, retry...`);
+        } catch (err) {
+          console.error(`❌ Errore caricamento ${name} (tentativo ${attempt}):`, err);
+        }
+        // Aspetta prima di riprovare (backoff esponenziale)
+        if (attempt < maxRetries) {
+          await new Promise(r => setTimeout(r, 500 * attempt));
+        }
+      }
+      console.error(`❌ Impossibile caricare ${name} dopo ${maxRetries} tentativi`);
+      return [];
+    };
+    
+    // Load quotes and items in parallel with retry
+    try {
+      const [quotes, items] = await Promise.all([
+        loadWithRetry(supabaseLoadQuotes, "preventivi"),
+        loadWithRetry(supabaseLoadItems, "articoli")
+      ]);
       
+      console.log("Data loaded:", quotes?.length || 0, "quotes,", items?.length || 0, "items");
+      
+      // Sovrascrivi solo se Supabase ha dati più recenti
       if (quotes && quotes.length > 0) {
         library = quotes;
         saveLibrary(library);
@@ -172,9 +257,11 @@ function showMainApp() {
         saveItemLibrary(itemLibrary);
         renderItemLibrary();
       }
-    }).catch(err => {
+    } catch (err) {
       console.error("Error loading data:", err);
-    });
+      // Reset flag per permettere un nuovo tentativo
+      dataLoadedOnce = false;
+    }
   }
 }
 
@@ -285,7 +372,7 @@ async function authLogin() {
     // Clear error and show app
     clearAuthError();
     currentUser = data.user;
-    showMainApp();
+    await showMainApp();
   } catch (err) {
     showAuthError(err.message);
   }
@@ -1149,15 +1236,38 @@ function saveLibrary(list){ localStorage.setItem(getUserScopedKey(LIBRARY_KEY), 
 
 function loadItemLibrary(){
   try{
-    const raw = localStorage.getItem(getUserScopedKey(ITEM_LIBRARY_KEY));
-    if(!raw) return [];
+    const key = getUserScopedKey(ITEM_LIBRARY_KEY);
+    console.log(`📂 Caricando articoli da: "${key}"`);
+    const raw = localStorage.getItem(key);
+    console.log(`📂 Dati trovati: ${raw ? 'SI (' + raw.length + ' chars)' : 'NO'}`);
+    if(!raw) {
+      const countEl = document.getElementById('itemCountValue');
+      if(countEl) countEl.textContent = '0';
+      return [];
+    }
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
+    const items = Array.isArray(parsed) ? parsed : [];
+    
+    // Aggiorna il debug badge
+    const countEl = document.getElementById('itemCountValue');
+    if(countEl) countEl.textContent = items.length;
+    
+    return items;
   }catch{
+    const countEl = document.getElementById('itemCountValue');
+    if(countEl) countEl.textContent = '0';
     return [];
   }
 }
-function saveItemLibrary(list){ localStorage.setItem(getUserScopedKey(ITEM_LIBRARY_KEY), JSON.stringify(list)); }
+function saveItemLibrary(list){ 
+  const key = getUserScopedKey(ITEM_LIBRARY_KEY);
+  console.log(`💾 Salvando ${list.length} articoli con chiave: "${key}"`);
+  localStorage.setItem(key, JSON.stringify(list));
+  
+  // Aggiorna il debug badge
+  const countEl = document.getElementById('itemCountValue');
+  if(countEl) countEl.textContent = list.length;
+}
 
 function loadCloudSettings(){
   try{
@@ -1268,7 +1378,11 @@ const ui = {
   itemEditMaterialField: $("itemEditMaterialField"),
   itemEditImageUrl: $("itemEditImageUrl"),
   itemEditImageFile: $("itemEditImageFile"),
-  itemEditCapturePhoto: $("itemEditCapturePhoto"),
+  itemEditCameraCapture: $("itemEditCameraCapture"),
+  itemEditGalleryBtn: $("itemEditGalleryBtn"),
+  itemEditCameraBtn: $("itemEditCameraBtn"),
+  itemImagePreview: $("itemImagePreview"),
+  itemImagePreviewImg: $("itemImagePreviewImg"),
   itemEditSave: $("itemEditSave"),
   itemEditCancel: $("itemEditCancel"),
 
@@ -2129,63 +2243,157 @@ async function cloudPushAll(){
   return { ok:true };
 }
 
+// Helper per logging visibile su smartphone
+function debugLog(message, isError = false) {
+  console.log(message);
+  const debugEl = document.getElementById('uploadDebugLog');
+  if(debugEl) {
+    const line = document.createElement('div');
+    line.style.color = isError ? '#ff0000' : '#00ff00';
+    line.style.marginBottom = '4px';
+    line.textContent = message;
+    debugEl.appendChild(line);
+    debugEl.scrollTop = debugEl.scrollHeight;
+    
+    // Assicurati che sia visibile
+    debugEl.style.display = 'block';
+  } else {
+    // Fallback: usa alert solo per errori critici
+    if(isError) {
+      alert('ERROR: ' + message);
+    }
+  }
+}
+
+function clearDebugLog() {
+  const debugEl = document.getElementById('uploadDebugLog');
+  if(debugEl) {
+    debugEl.innerHTML = '';
+    debugEl.textContent = '=== DEBUG LOG ===\n';
+  }
+}
+
 async function uploadItemImage(file){
-  console.log("🔵 uploadItemImage called with file:", file.name, "size:", file.size);
+  clearDebugLog();
+  debugLog("🔵 Upload iniziato");
+  debugLog(`📁 File: ${file.name} (${Math.round(file.size/1024)}KB)`);
   
-  // Prova con client autenticato se disponibile
-  let client = getAuthSupabaseClient();
-  console.log("🔵 Auth client:", client ? "EXISTS" : "NULL");
+  // Verifica che l'utente sia autenticato
+  debugLog("🔵 Verifica autenticazione...");
   
-  // Se non autenticato, usa client pubblico
-  if(!client) {
-    client = getSupabaseClient();
-    console.log("🟡 Using public client:", client ? "EXISTS" : "NULL");
+  if(!currentUser) {
+    debugLog("🟠 Non autenticato - uso base64", true);
+    return fileToBase64(file);
   }
   
+  debugLog(`✅ User: ${currentUser.id.substring(0, 8)}...`);
+  
+  // Prova con client autenticato
+  debugLog("🔵 Ottengo client Supabase...");
+  let client = getAuthSupabaseClient();
+  
   if(!client){
-    console.log("🟠 No client available, using base64 fallback");
-    // fallback: local base64
-    return new Promise((resolve, reject)=>{
+    debugLog("🟠 Client non disponibile - uso base64", true);
+    return fileToBase64(file);
+  }
+  
+  debugLog("✅ Client OK");
+
+  try {
+    debugLog("🔵 Inizio upload a Supabase Storage...");
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const path = `${currentUser.id}/${Date.now()}_${uid()}_${safeName}`;
+    debugLog(`📍 Path: ${path.substring(0, 40)}...`);
+    
+    const { data: uploadData, error } = await client.storage
+      .from("item-images")
+      .upload(path, file, { 
+        upsert: true,
+        contentType: file.type || 'image/jpeg'
+      });
+    
+    if(error) {
+      debugLog("🔴 ERRORE UPLOAD!", true);
+      debugLog(`🔴 ${error.message}`, true);
+      if(error.statusCode) debugLog(`🔴 Status: ${error.statusCode}`, true);
+      throw new Error(error.message);
+    }
+    
+    debugLog("✅ Upload completato!");
+    
+    const { data: urlData } = client.storage.from("item-images").getPublicUrl(path);
+    const publicUrl = urlData?.publicUrl || "";
+    
+    if(!publicUrl) {
+      debugLog("🔴 URL pubblico vuoto!", true);
+      throw new Error("URL pubblico non generato");
+    }
+    
+    debugLog(`✅ URL: ${publicUrl.substring(0, 50)}...`);
+    return publicUrl;
+  } catch(err) {
+    debugLog("🔴 ECCEZIONE!", true);
+    debugLog(`🔴 ${err.message}`, true);
+    debugLog("🟠 Fallback a base64...");
+    return fileToBase64(file);
+  }
+}
+
+// Helper per comprimere e convertire immagine
+function compressAndConvertImage(file, maxWidth = 800, quality = 0.8) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        
+        // Ridimensiona se troppo grande
+        if (width > maxWidth) {
+          height = (height * maxWidth) / width;
+          width = maxWidth;
+        }
+        
+        canvas.width = width;
+        canvas.height = height;
+        
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        
+        // Converti in base64 compresso
+        const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
+        console.log("✅ Immagine compressa:", {
+          originale: file.size,
+          compressa: compressedBase64.length,
+          riduzione: Math.round((1 - compressedBase64.length / file.size) * 100) + "%"
+        });
+        resolve(compressedBase64);
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+// Helper per convertire file in base64 (ora usa compressione)
+function fileToBase64(file) {
+  console.log("🔄 Compressione immagine per fallback base64...");
+  return compressAndConvertImage(file, 800, 0.7).catch(err => {
+    console.error("❌ Errore compressione, uso base64 originale:", err);
+    return new Promise((resolve, reject) => {
       const reader = new FileReader();
-      reader.onload = ()=> {
+      reader.onload = () => {
         console.log("✅ Base64 encoded, length:", reader.result.length);
         resolve(reader.result);
       };
       reader.onerror = reject;
       reader.readAsDataURL(file);
     });
-  }
-
-  try {
-    console.log("🔵 Attempting upload to Supabase Storage...");
-    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-    const path = `items/${Date.now()}_${uid()}_${safeName}`;
-    console.log("🔵 Upload path:", path);
-    
-    const { error } = await client.storage.from("item-images").upload(path, file, { upsert: true });
-    if(error) {
-      console.error("🔴 Supabase upload error:", error);
-      throw new Error(error.message);
-    }
-    
-    console.log("✅ Upload successful");
-    const { data } = client.storage.from("item-images").getPublicUrl(path);
-    const publicUrl = data?.publicUrl || "";
-    console.log("✅ Public URL:", publicUrl);
-    return publicUrl;
-  } catch(err) {
-    console.warn("🟠 Supabase storage error, falling back to base64:", err);
-    // Fallback to base64 if upload fails
-    return new Promise((resolve, reject)=>{
-      const reader = new FileReader();
-      reader.onload = ()=> {
-        console.log("✅ Fallback base64 encoded");
-        resolve(reader.result);
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-  }
+  });
 }
 
 /* ===========================
@@ -2699,44 +2907,135 @@ if(ui.itemEditMaterialOverride){
   });
 }
 
+// Funzione comune per gestire l'upload
+const handleImageUpload = (file, source) => {
+  debugLog(`📷 Click da ${source}`);
+  
+  if(!file) {
+    debugLog("❌ Nessun file selezionato", true);
+    ui.note.innerHTML = `<span class="warn">❌ Nessun file selezionato</span>`;
+    return;
+  }
+  
+  debugLog(`📁 File: ${file.name} (${Math.round(file.size/1024)}KB)`);
+  
+  // Verifica dimensione file (max 5MB)
+  if(file.size > 5 * 1024 * 1024) {
+    debugLog("❌ File troppo grande (max 5MB)", true);
+    ui.note.innerHTML = `<span class="warn">❌ File troppo grande (max 5MB)</span>`;
+    return;
+  }
+  
+  ui.note.innerHTML = `<span class="mini">⏳ Caricamento ${Math.round(file.size/1024)}KB...</span>`;
+  
+  // Mostra preview immediata
+  if(ui.itemImagePreview && ui.itemImagePreviewImg) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      ui.itemImagePreviewImg.src = e.target.result;
+      ui.itemImagePreview.style.display = 'block';
+      debugLog("✅ Preview mostrata");
+    };
+    reader.readAsDataURL(file);
+  }
+  
+  debugLog("🔄 Avvio upload...");
+  
+  uploadItemImage(file).then((url)=>{
+    debugLog("✅ Upload completato!");
+    debugLog(`📍 URL length: ${url.length}`);
+    
+    if(ui.itemEditImageUrl) {
+      ui.itemEditImageUrl.value = url;
+      debugLog("✅ Campo URL aggiornato");
+    } else {
+      debugLog("❌ Campo URL non trovato!", true);
+    }
+    
+    ui.note.innerHTML = `<span class="ok">✓ Immagine pronta! Clicca "Salva articolo".</span>`;
+  }).catch((err)=>{
+    debugLog("❌ ERRORE!", true);
+    debugLog(`❌ ${err.message}`, true);
+    ui.note.innerHTML = `<span class="warn">❌ Errore: ${escapeHtml(err.message || "Upload fallito")}</span>`;
+    if(ui.itemImagePreview) ui.itemImagePreview.style.display = 'none';
+  });
+};
+
 if(ui.itemEditImageFile){
   ui.itemEditImageFile.addEventListener("change", (e)=>{
+    debugLog("🖼️ Event CHANGE galleria");
     const file = e.target.files?.[0];
-    if(!file) return;
-    ui.note.innerHTML = `<span class="mini">Caricamento immagine...</span>`;
-    console.log("📷 Caricamento foto:", file.name);
-    uploadItemImage(file).then((url)=>{
-      console.log("✅ Foto caricata, URL:", url.substring(0, 50) + "...");
-      if(ui.itemEditImageUrl) {
-        ui.itemEditImageUrl.value = url;
-        console.log("✅ Campo imageUrl aggiornato");
-      }
-      ui.note.innerHTML = `<span class="ok">✓ Immagine caricata. Clicca "Salva articolo" per confermare.</span>`;
-    }).catch((err)=>{
-      console.error("❌ Errore upload:", err);
-      ui.note.innerHTML = `<span class="warn">Errore upload immagine: ${escapeHtml(err.message || "")}</span>`;
-    });
+    handleImageUpload(file, "galleria");
+    e.target.value = ""; // Reset per permettere stessa foto
   });
 }
 
-if(ui.itemEditCapturePhoto){
-  ui.itemEditCapturePhoto.addEventListener("click", ()=>{
-    if(ui.itemEditImageFile) ui.itemEditImageFile.click();
+if(ui.itemEditCameraCapture){
+  ui.itemEditCameraCapture.addEventListener("change", (e)=>{
+    debugLog("📷 Event CHANGE fotocamera");
+    const file = e.target.files?.[0];
+    handleImageUpload(file, "fotocamera");
+    e.target.value = ""; // Reset per permettere stessa foto
+  });
+}
+
+if(ui.itemEditGalleryBtn){
+  ui.itemEditGalleryBtn.addEventListener("click", (e)=>{
+    e.preventDefault();
+    clearDebugLog();
+    debugLog("=== CLICK GALLERIA ===");
+    debugLog("Timestamp: " + new Date().toLocaleTimeString());
+    
+    if(ui.itemEditImageFile) {
+      debugLog("✅ Input file trovato");
+      debugLog("Apertura selezione file...");
+      ui.itemEditImageFile.click();
+    } else {
+      debugLog("❌ Input file NON trovato!", true);
+      alert("ERRORE: Input file non trovato!");
+    }
+  });
+}
+
+if(ui.itemEditCameraBtn){
+  ui.itemEditCameraBtn.addEventListener("click", (e)=>{
+    e.preventDefault();
+    clearDebugLog();
+    debugLog("=== CLICK FOTOCAMERA ===");
+    debugLog("Timestamp: " + new Date().toLocaleTimeString());
+    
+    if(ui.itemEditCameraCapture) {
+      debugLog("✅ Input camera trovato");
+      debugLog("Apertura fotocamera...");
+      ui.itemEditCameraCapture.click();
+    } else {
+      debugLog("❌ Input camera NON trovato!", true);
+      alert("ERRORE: Input camera non trovato!");
+    }
   });
 }
 
 if(ui.itemEditSave){
   ui.itemEditSave.addEventListener("click", ()=>{
+    debugLog("💾 Click Salva articolo");
+    
     const name = ui.itemEditName?.value?.trim();
     if(!name){
+      debugLog("❌ Nome mancante", true);
       ui.note.innerHTML = `<span class="warn">Inserisci un nome per l'articolo.</span>`;
       return;
     }
 
+    const imageUrl = ui.itemEditImageUrl?.value?.trim() || "";
+    debugLog(`📦 ImageUrl: ${imageUrl.length} chars`);
+    if(imageUrl.length > 0) {
+      debugLog(`📍 URL type: ${imageUrl.startsWith('data:') ? 'base64' : 'URL'}`);
+    }
+    
     const newItem = {
       id: currentEditItemId || uid(),
       name: name,
-      imageUrl: ui.itemEditImageUrl?.value?.trim() || "",
+      imageUrl: imageUrl,
       group: ui.itemEditGroup?.value || "B",
       date: nowStr(),
       gramsPerPiece: num(ui.itemEditGrams?.value || ""),
@@ -2747,28 +3046,46 @@ if(ui.itemEditSave){
       materialOverrideOn: ui.itemEditMaterialOverride?.checked === true,
       materialEurPerGram: num(ui.itemEditMaterialCost?.value || state.config.materialEurPerGram)
     };
+    
+    console.log("📦 Oggetto newItem creato:", {
+      id: newItem.id,
+      name: newItem.name,
+      imageUrl: newItem.imageUrl.substring(0, 50) + "...",
+      imageUrlLength: newItem.imageUrl.length
+    });
 
+    debugLog("💾 Salvando localmente...");
+    
     if(currentEditItemId){
       const idx = itemLibrary.findIndex(x=>x.id===currentEditItemId);
       if(idx !== -1){
         itemLibrary[idx] = newItem;
+        debugLog("✅ Articolo aggiornato");
         ui.note.innerHTML = `<span class="ok">Articolo aggiornato.</span>`;
       }
     }else{
       itemLibrary.unshift(newItem);
+      debugLog("✅ Articolo creato");
       ui.note.innerHTML = `<span class="ok">Articolo creato.</span>`;
     }
 
     saveItemLibrary(itemLibrary);
+    debugLog("✅ Salvato nel localStorage");
 
     // Auto-sync to Supabase if user is logged in
     if (currentUser) {
+      debugLog("☁️ Sync con Supabase...");
       supabaseUpsertItem(newItem).then(result => {
+        debugLog(`☁️ Sync result: ${result.ok ? 'OK' : 'FAIL'}`);
         if (!result.ok) {
+          debugLog(`❌ Errore: ${result.error}`, true);
           ui.note.innerHTML += ` <span class="warn">Errore cloud: ${result.error}</span>`;
         } else {
+          debugLog("✅ Sincronizzato!");
           ui.note.innerHTML += ` <span style="color: var(--success);">✓ Sincronizzato al cloud</span>`;
         }
+      }).catch(err => {
+        debugLog(`❌ Eccezione sync: ${err.message}`, true);
       });
     } else if (cloud.enabled) {
       cloudUpsertItem(newItem).then(res=>{
@@ -3154,5 +3471,38 @@ if (accountDetails) {
 /* ===========================
    INITIALIZE APP
 =========================== */
-initSupabase();
-renderItemLibrary();
+
+// TEST IMMEDIATO - mostra stato su qualunque dispositivo
+window.addEventListener('load', () => {
+  setTimeout(() => {
+    const debugEl = document.getElementById('uploadDebugLog');
+    if(debugEl) {
+      debugEl.innerHTML = '';
+      debugEl.style.display = 'block';
+      debugEl.textContent = '=== STATE CHECK ===\n';
+      
+      const msg1 = `Pagina caricata: ${new Date().toLocaleTimeString()}\n`;
+      const msg2 = `Utente autenticato: ${currentUser ? 'SI - ' + currentUser.id.substring(0, 8) : 'NO'}\n`;
+      const msg3 = `Supabase client: ${getAuthSupabaseClient() ? 'SI' : 'NO'}\n`;
+      const msg4 = `localStorage: ${typeof localStorage !== 'undefined' ? 'SI' : 'NO'}\n`;
+      const msg5 = `itemLibrary items: ${itemLibrary ? itemLibrary.length : 0}\n`;
+      
+      debugEl.textContent += msg1 + msg2 + msg3 + msg4 + msg5;
+      debugEl.textContent += '\n--- PROVA A CLICCARE FOTO ---';
+    }
+  }, 500);
+});
+
+// Aspetta che il DOM sia pronto prima di inizializzare
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    console.log("📄 DOM pronto, avvio inizializzazione...");
+    initSupabase();
+    renderItemLibrary();
+  });
+} else {
+  // DOM già pronto
+  console.log("📄 DOM già pronto, avvio inizializzazione...");
+  initSupabase();
+  renderItemLibrary();
+}
