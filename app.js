@@ -2,7 +2,7 @@
    Debug Panel & Logging
 =========================== */
 let debugLogs = [];
-const maxDebugLogs = 50;
+const maxDebugLogs = 200;
 
 function addDebugLog(msg) {
   const timestamp = new Date().toLocaleTimeString('it-IT');
