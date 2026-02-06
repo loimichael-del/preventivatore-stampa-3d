@@ -1200,7 +1200,9 @@ const DEFAULTS = {
 function generateQuoteId(){
   const d = new Date();
   const pad = (n)=> String(n).padStart(2,"0");
-  return `Q-${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
+  const ms = String(d.getMilliseconds()).padStart(3, "0");
+  const rnd = Math.random().toString(36).slice(2, 6).toUpperCase();
+  return `Q-${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}${ms}-${rnd}`;
 }
 
 function loadState() {
@@ -2718,6 +2720,11 @@ if(ui.saveQuote){
     } else {
       console.log("🔴 No currentUser - sync skipped");
     }
+
+    // Prepara un nuovo codice per il prossimo preventivo (evita sovrascritture)
+    state.order.quoteId = generateQuoteId();
+    saveState(state);
+    bindTop();
   });
 }
 
