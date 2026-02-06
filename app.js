@@ -1728,8 +1728,20 @@ function itemTemplate(it, idx){
   </details>`;
 }
 
-function renderItems(){
+function renderItems(preserveOpen = true){
+  const openIds = preserveOpen && ui.items
+    ? [...ui.items.querySelectorAll(".item[open]")].map(el => el.getAttribute("data-id"))
+    : [];
+
   ui.items.innerHTML = state.items.map(itemTemplate).join("");
+
+  if(openIds.length){
+    openIds.forEach(id => {
+      if(!id) return;
+      const el = ui.items.querySelector(`.item[data-id="${id}"]`);
+      if(el) el.setAttribute("open", "");
+    });
+  }
 }
 
 function readItemsFromDOM(){
