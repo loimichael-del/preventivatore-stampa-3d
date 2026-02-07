@@ -242,6 +242,19 @@ main{
   background:#fff; text-align:left; font-size:13px; cursor:pointer;
 }
 .side-menu-actions button:hover{ background:#eff6ff; border-color:var(--primary-600); }
+.extras-list{ display:flex; flex-direction:column; gap:6px; margin:6px 0; }
+.extras-row{ display:grid; grid-template-columns: 1fr 120px 32px; gap:6px; align-items:center; }
+.extras-row input{ height:34px; padding:0 8px; border-radius:8px; border:1px solid var(--b); }
+.extras-remove{
+  height:32px; width:32px; border-radius:8px; border:1px solid #fecaca;
+  background:#fee; color:#b91c1c; font-weight:700; cursor:pointer;
+}
+.extras-remove:hover{ background:#fecaca; }
+.extras-add{
+  height:34px; padding:0 10px; border-radius:8px; border:1px dashed var(--b);
+  background:#fff; cursor:pointer; font-size:12px;
+}
+.extras-add:hover{ border-color:var(--primary-600); background:#f8fafc; }
 .side-menu-footer{ margin-top:auto; padding-top:12px; border-top:1px solid var(--b); }
 .logout-btn{
   width:100%; height:42px; padding:0 12px; border-radius:10px;

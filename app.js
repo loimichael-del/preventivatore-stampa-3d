@@ -1025,6 +1025,8 @@ function quoteItem(item, config) {
   const postProcessEurPerHour = Math.max(0, num(config.postProcessEurPerHour, 15));
 
   const postProcessHours = Math.max(0, parseHoursSmart(item.postProcessHours, 0));
+  const postProcessExtras = Array.isArray(item.postProcessExtras) ? item.postProcessExtras : [];
+  const postProcessExtrasCost = postProcessExtras.reduce((a, x) => a + Math.max(0, num(x?.price, 0)), 0);
 
   const seriesDiscountPct = Math.max(0, num(config.seriesDiscountPct));
   const seriesThresholdQty = Math.max(1, Math.floor(num(config.seriesThresholdQty, 10)));
@@ -1040,8 +1042,8 @@ function quoteItem(item, config) {
   const designCostBase = hasDesign ? (designHours * designEurPerHour) : 0;
   const designCost = designCostBase * Math.max(0, num(group.designFactor, 1));
 
-  // Post-process: hours * hourly rate (no group factor)
-  const postProcessCost = postProcessHours * postProcessEurPerHour;
+  // Post-process: hours * hourly rate + extras (no group factor)
+  const postProcessCost = (postProcessHours * postProcessEurPerHour) + postProcessExtrasCost;
 
   const variableCosts = materialCost + printCost;
 
@@ -1064,6 +1066,8 @@ function quoteItem(item, config) {
     printHours,
     designHours,
     postProcessHours,
+    postProcessExtras,
+    postProcessExtrasCost,
     groupKey,
     materialCost,
     printCostBase,
@@ -1199,6 +1203,7 @@ const DEFAULTS = {
       designHours: "",
       postProcessHours: "",
       postProcessNotes: "",
+      postProcessExtras: [],
       isSeries: false,
       materialOverrideOn: false,
       materialEurPerGram: 0.15,
@@ -1471,6 +1476,7 @@ const ui = {
   sumMat: $("sumMat"),
   sumPrint: $("sumPrint"),
   sumDesign: $("sumDesign"),
+  sumPostProcess: $("sumPostProcess"),
   sumDiscount: $("sumDiscount"),
   sumSetup: $("sumSetup"),
   sumMargin: $("sumMargin"),
@@ -1624,6 +1630,7 @@ function itemTemplate(it, idx){
   const hasDesign = it.hasDesign !== false;
   const displayName = (it.name || `Articolo ${idx+1}`).trim() || `Articolo ${idx+1}`;
   const qtyDisplay = Number.isFinite(Number(it.qty)) && Number(it.qty) > 0 ? Math.floor(Number(it.qty)) : 1;
+  const extras = Array.isArray(it.postProcessExtras) ? it.postProcessExtras : [];
 
   return `
   <details class="item" data-id="${it.id}">
@@ -1729,6 +1736,20 @@ function itemTemplate(it, idx){
         <textarea data-k="postProcessNotes" rows="2" placeholder="Es. Installazione LED + lucidatura finale">${escapeHtml(it.postProcessNotes || "")}</textarea>
       </div>
 
+      <div class="field span2">
+        <label>Componenti extra (nome e prezzo)</label>
+        <div class="extras-list" data-k="postProcessExtras">
+          ${extras.map((ex, i)=>`
+            <div class="extras-row" data-extra-row>
+              <input data-extra-name type="text" placeholder="Nome extra" value="${escapeHtml(ex?.name || "")}" />
+              <input data-extra-price type="text" inputmode="decimal" placeholder="Prezzo" value="${escapeHtml(ex?.price ?? "")}" />
+              <button type="button" class="extras-remove" data-act="removeExtra" title="Rimuovi">−</button>
+            </div>
+          `).join("")}
+        </div>
+        <button type="button" class="extras-add" data-act="addExtra">+ Aggiungi extra</button>
+      </div>
+
       <div class="field">
         <label>Serie (sconto se ≥ soglia)</label>
         <div class="checkline">
@@ -1781,6 +1802,13 @@ function readItemsFromDOM(){
     const get = (k)=> w.querySelector(`[data-k="${k}"]`);
     const hasDesign = get("hasDesign").checked;
     const materialOverrideOn = get("materialOverrideOn").checked;
+    const extrasRows = [...w.querySelectorAll("[data-extra-row]")];
+    const postProcessExtras = extrasRows.map(row => {
+      const name = row.querySelector("[data-extra-name]")?.value?.trim() || "";
+      const priceRaw = row.querySelector("[data-extra-price]")?.value?.trim() || "";
+      const price = num(priceRaw, 0);
+      return { name, price };
+    }).filter(x => x.name || x.price > 0);
 
     return {
       ...old,
@@ -1796,6 +1824,7 @@ function readItemsFromDOM(){
       designHours: hasDesign ? get("designHours").value.trim() : "0:00",
       postProcessHours: get("postProcessHours").value.trim(),
       postProcessNotes: get("postProcessNotes").value.trim(),
+      postProcessExtras,
       isSeries: get("isSeries").checked,
       materialOverrideOn,
       materialEurPerGram: materialOverrideOn ? num(get("materialEurPerGram").value, state.config.materialEurPerGram) : state.config.materialEurPerGram
@@ -1846,6 +1875,9 @@ function normalizeItemForLibrary(it){
     printHoursPerPiece: it.printHoursPerPiece,
     hasDesign: it.hasDesign !== false,
     designHours: it.designHours,
+    postProcessHours: it.postProcessHours,
+    postProcessNotes: it.postProcessNotes,
+    postProcessExtras: Array.isArray(it.postProcessExtras) ? it.postProcessExtras : [],
     isSeries: it.isSeries === true,
     materialOverrideOn: it.materialOverrideOn === true,
     materialEurPerGram: it.materialEurPerGram,
@@ -2520,6 +2552,7 @@ function render(){
   ui.sumMat.textContent = eur(s.sumMat);
   ui.sumPrint.textContent = eur(s.sumPrint);
   ui.sumDesign.textContent = eur(s.sumDesign);
+  ui.sumPostProcess.textContent = eur(s.sumPostProcess);
   ui.sumDiscount.textContent = "- " + eur(s.sumDiscount);
   ui.sumSetup.textContent = eur(s.setupApplied);
   ui.sumMargin.textContent = eur(s.sumMargin);
@@ -2709,6 +2742,7 @@ ui.addItem.addEventListener("click", ()=>{
     designHours: "",
     postProcessHours: "",
     postProcessNotes: "",
+    postProcessExtras: [],
     isSeries: false,
     materialOverrideOn: false,
     materialEurPerGram: state.config.materialEurPerGram
@@ -2754,6 +2788,7 @@ ui.copy.addEventListener("click", async ()=>{
   lines.push(`Totale materiale: ${round2(s.sumMat)}€`);
   lines.push(`Totale stampa: ${round2(s.sumPrint)}€`);
   lines.push(`Totale design: ${round2(s.sumDesign)}€`);
+  lines.push(`Totale post-produzione: ${round2(s.sumPostProcess)}€`);
   lines.push(`Sconto serie totale: ${round2(s.sumDiscount)}€`);
   lines.push(`Margine totale: ${round2(s.sumMargin)}€`);
   lines.push(`TOTALE FINALE: ${round2(s.total)}€`);
@@ -3434,6 +3469,30 @@ ui.items.addEventListener("click", (e)=>{
     state.items = state.items.filter(x=>x.id!==id);
     saveState(state);
     renderItems();
+    render();
+    return;
+  }
+  if(action === "addExtra"){
+    const wrapItem = e.target.closest(".item");
+    const extrasList = wrapItem?.querySelector("[data-k=\"postProcessExtras\"]");
+    if(extrasList){
+      const row = document.createElement("div");
+      row.className = "extras-row";
+      row.setAttribute("data-extra-row", "");
+      row.innerHTML = `
+        <input data-extra-name type="text" placeholder="Nome extra" />
+        <input data-extra-price type="text" inputmode="decimal" placeholder="Prezzo" />
+        <button type="button" class="extras-remove" data-act="removeExtra" title="Rimuovi">−</button>
+      `;
+      extrasList.appendChild(row);
+    }
+    return;
+  }
+  if(action === "removeExtra"){
+    const row = e.target.closest("[data-extra-row]");
+    if(row) row.remove();
+    readItemsFromDOM();
+    saveState(state);
     render();
     return;
   }
