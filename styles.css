@@ -231,16 +231,25 @@ main{
   position:fixed; top:0; left:0; height:100%; width:280px; background:#fff;
   border-right:1px solid var(--b); transform:translateX(-100%);
   transition:transform 0.2s; z-index:8; padding:12px;
+  display:flex; flex-direction:column;
 }
 .side-menu.open{ transform:translateX(0); }
 .side-menu-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
 .side-menu-title{ font-weight:700; font-size:14px; }
-.side-menu-actions{ display:flex; flex-direction:column; gap:8px; }
+.side-menu-actions{ display:flex; flex-direction:column; gap:8px; flex:1; }
 .side-menu-actions button{
   height:38px; padding:0 12px; border-radius:10px; border:1px solid var(--b);
   background:#fff; text-align:left; font-size:13px; cursor:pointer;
 }
 .side-menu-actions button:hover{ background:#eff6ff; border-color:var(--primary-600); }
+.side-menu-footer{ margin-top:auto; padding-top:12px; border-top:1px solid var(--b); }
+.logout-btn{
+  width:100%; height:42px; padding:0 12px; border-radius:10px;
+  border:1px solid #dc2626; background:#fee; color:#dc2626;
+  font-size:14px; font-weight:600; cursor:pointer;
+  display:flex; align-items:center; justify-content:center; gap:8px;
+}
+.logout-btn:hover{ background:#fecaca; border-color:#b91c1c; }
 
 .card{
   background:var(--card); border:1px solid var(--b);
