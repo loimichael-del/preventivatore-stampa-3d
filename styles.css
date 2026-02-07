@@ -391,6 +391,24 @@ button.primary:hover{
   border-color:var(--primary-700);
 }
 
+button[data-act="remove"],
+button[data-lib="delete"],
+button[data-itemlib="delete"],
+button[data-itemview="delete"],
+#deleteAccountBtn{
+  background:var(--danger);
+  color:#fff;
+  border-color:#b91c1c;
+}
+button[data-act="remove"]:hover,
+button[data-lib="delete"]:hover,
+button[data-itemlib="delete"]:hover,
+button[data-itemview="delete"]:hover,
+#deleteAccountBtn:hover{
+  background:#dc2626;
+  border-color:#991b1b;
+}
+
 .note{ margin-top:10px; font-size:12px; color:var(--mut); line-height:1.45; }
 .warn{ color:var(--warning); }
 .ok{ color:var(--success); }
