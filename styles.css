@@ -13,7 +13,7 @@
 }
 
 body[data-theme="dark"]{
-  --b:#1f2937; --t:#e5e7eb; --mut:#94a3b8;
+  --b:#1f2937; --t:#e5e7eb; --mut:#cbd5e1;
   --bg:#0a0f1c; --card:#0f172a; --soft:#111827;
   --primary:#60a5fa; --primary-600:#3b82f6; --primary-700:#2563eb;
   --accent:#fbbf24; --accent-weak:#1f2937;
@@ -62,6 +62,19 @@ body[data-theme="dark"] button.primary:hover{
 body[data-theme="dark"] button:hover{
   background:#0f1b33;
   border-color:#2b3b55;
+}
+
+body[data-theme="dark"] .actions button{
+  background:#0f1b33;
+  border-color:#2b3b55;
+}
+
+body[data-theme="dark"] input:disabled,
+body[data-theme="dark"] select:disabled,
+body[data-theme="dark"] textarea:disabled{
+  background:#0b1220;
+  color:var(--mut);
+  border-color:#1f2937;
 }
 
 body[data-theme="dark"] .chip{
