@@ -133,6 +133,51 @@ body[data-theme="dark"] .btn-ghost:hover{
   border-color:#2b3b55;
 }
 
+body[data-theme="dark"] button[data-act="remove"],
+body[data-theme="dark"] button[data-lib="delete"],
+body[data-theme="dark"] button[data-itemlib="delete"],
+body[data-theme="dark"] button[data-itemview="delete"],
+body[data-theme="dark"] #deleteAccountBtn{
+  background:var(--danger);
+  color:#fff;
+  border-color:#b91c1c;
+}
+body[data-theme="dark"] button[data-act="remove"]:hover,
+body[data-theme="dark"] button[data-lib="delete"]:hover,
+body[data-theme="dark"] button[data-itemlib="delete"]:hover,
+body[data-theme="dark"] button[data-itemview="delete"]:hover,
+body[data-theme="dark"] #deleteAccountBtn:hover{
+  background:#dc2626;
+  border-color:#991b1b;
+}
+
+/* Force delete buttons red in any theme (higher specificity) */
+.library-actions button[data-itemlib="delete"],
+.library-actions button[data-lib="delete"],
+.item-actions button[data-act="remove"],
+.item-actions button[data-itemview="delete"],
+button[data-act="remove"],
+button[data-lib="delete"],
+button[data-itemlib="delete"],
+button[data-itemview="delete"],
+#deleteAccountBtn{
+  background:var(--danger);
+  color:#fff;
+  border-color:#b91c1c;
+}
+.library-actions button[data-itemlib="delete"]:hover,
+.library-actions button[data-lib="delete"]:hover,
+.item-actions button[data-act="remove"]:hover,
+.item-actions button[data-itemview="delete"]:hover,
+button[data-act="remove"]:hover,
+button[data-lib="delete"]:hover,
+button[data-itemlib="delete"]:hover,
+button[data-itemview="delete"]:hover,
+#deleteAccountBtn:hover{
+  background:#dc2626;
+  border-color:#991b1b;
+}
+
 body[data-theme="dark"] .report{
   background:#0b1220;
   border-color:#1f2937;
