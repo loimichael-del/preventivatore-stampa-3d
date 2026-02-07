@@ -1022,6 +1022,9 @@ function quoteItem(item, config) {
 
   const machineEurPerHour = Math.max(0, num(config.machineEurPerHour));
   const designEurPerHour = Math.max(0, num(config.designEurPerHour));
+  const postProcessEurPerHour = Math.max(0, num(config.postProcessEurPerHour, 15));
+
+  const postProcessHours = Math.max(0, parseHoursSmart(item.postProcessHours, 0));
 
   const seriesDiscountPct = Math.max(0, num(config.seriesDiscountPct));
   const seriesThresholdQty = Math.max(1, Math.floor(num(config.seriesThresholdQty, 10)));
@@ -1037,6 +1040,9 @@ function quoteItem(item, config) {
   const designCostBase = hasDesign ? (designHours * designEurPerHour) : 0;
   const designCost = designCostBase * Math.max(0, num(group.designFactor, 1));
 
+  // Post-process: hours * hourly rate (no group factor)
+  const postProcessCost = postProcessHours * postProcessEurPerHour;
+
   const variableCosts = materialCost + printCost;
 
   // Series discount applies to variableCosts
@@ -1044,7 +1050,7 @@ function quoteItem(item, config) {
   const discountApplied = isSeries && qty >= seriesThresholdQty;
   const seriesDiscount = discountApplied ? variableCosts * seriesDiscountPct : 0;
 
-  const itemBase = (variableCosts - seriesDiscount) + designCost;
+  const itemBase = (variableCosts - seriesDiscount) + designCost + postProcessCost;
 
   const marginPct = Math.max(0, num(group.marginPct, 0.25));
   const itemMargin = itemBase * marginPct;
@@ -1057,12 +1063,14 @@ function quoteItem(item, config) {
     grams,
     printHours,
     designHours,
+    postProcessHours,
     groupKey,
     materialCost,
     printCostBase,
     printCost,
     designCostBase,
     designCost,
+    postProcessCost,
     variableCosts,
     seriesDiscount,
     discountApplied,
@@ -1090,6 +1098,7 @@ function quoteOrder(state) {
   const sumMat = itemQuotes.reduce((a,x)=> a + x.q.materialCost, 0);
   const sumPrint = itemQuotes.reduce((a,x)=> a + x.q.printCost, 0);
   const sumDesign = itemQuotes.reduce((a,x)=> a + x.q.designCost, 0);
+  const sumPostProcess = itemQuotes.reduce((a,x)=> a + x.q.postProcessCost, 0);
   const sumDiscount = itemQuotes.reduce((a,x)=> a + x.q.seriesDiscount, 0);
   const sumMargin = itemQuotes.reduce((a,x)=> a + x.q.itemMargin, 0);
   const sumItemsTotal = itemQuotes.reduce((a,x)=> a + x.q.itemTotal, 0);
@@ -1104,7 +1113,7 @@ function quoteOrder(state) {
 
   return {
     itemQuotes,
-    sums: { sumMat, sumPrint, sumDesign, sumDiscount, sumMargin, setupApplied, total }
+    sums: { sumMat, sumPrint, sumDesign, sumPostProcess, sumDiscount, sumMargin, setupApplied, total }
   };
 }
 
@@ -1159,6 +1168,7 @@ const DEFAULTS = {
     materialEurPerGram: 0.15,
     machineEurPerHour: 2,
     designEurPerHour: 20,
+    postProcessEurPerHour: 15,
     machineSetupFee: 10,
     seriesDiscountPct: 0.25,
     seriesThresholdQty: 10,
@@ -1187,6 +1197,8 @@ const DEFAULTS = {
       printHoursPerPiece: "",
       hasDesign: false,
       designHours: "",
+      postProcessHours: "",
+      postProcessNotes: "",
       isSeries: false,
       materialOverrideOn: false,
       materialEurPerGram: 0.15,
@@ -1439,6 +1451,7 @@ const ui = {
   cfg_material: $("cfg_material"),
   cfg_machine: $("cfg_machine"),
   cfg_design: $("cfg_design"),
+  cfg_postProcess: $("cfg_postProcess"),
   cfg_setup: $("cfg_setup"),
   cfg_discount: $("cfg_discount"),
   cfg_threshold: $("cfg_threshold"),
@@ -1472,10 +1485,12 @@ const ui = {
   p_sumMat: $("p_sumMat"),
   p_sumPrint: $("p_sumPrint"),
   p_sumDesign: $("p_sumDesign"),
+  p_sumPostProcess: $("p_sumPostProcess"),
   p_sumDiscount: $("p_sumDiscount"),
   p_sumSetup: $("p_sumSetup"),
   p_sumMargin: $("p_sumMargin"),
   p_total: $("p_total"),
+  p_rowPostProcess: $("p_rowPostProcess"),
   p_rowDiscount: $("p_rowDiscount"),
   p_rowSetup: $("p_rowSetup"),
   p_rowMargin: $("p_rowMargin"),
@@ -1543,6 +1558,7 @@ function bindTop(){
   ui.cfg_material.value = fmtComma(state.config.materialEurPerGram);
   ui.cfg_machine.value = fmtComma(state.config.machineEurPerHour);
   ui.cfg_design.value = fmtComma(state.config.designEurPerHour);
+  ui.cfg_postProcess.value = fmtComma(state.config.postProcessEurPerHour || 15);
   ui.cfg_setup.value = fmtComma(state.config.machineSetupFee);
   ui.cfg_discount.value = String(Math.round(state.config.seriesDiscountPct * 100));
   ui.cfg_threshold.value = String(state.config.seriesThresholdQty);
@@ -1577,6 +1593,7 @@ function readTop(){
   state.config.materialEurPerGram = num(ui.cfg_material.value);
   state.config.machineEurPerHour = num(ui.cfg_machine.value);
   state.config.designEurPerHour = num(ui.cfg_design.value);
+  state.config.postProcessEurPerHour = num(ui.cfg_postProcess.value, 15);
   state.config.machineSetupFee = num(ui.cfg_setup.value);
   state.config.seriesDiscountPct = num(ui.cfg_discount.value) / 100;
   state.config.seriesThresholdQty = Math.max(1, Math.floor(num(ui.cfg_threshold.value, 10)));
@@ -1702,6 +1719,17 @@ function itemTemplate(it, idx){
       </div>
 
       <div class="field">
+        <label>Ore post-produzione (totali)</label>
+        <input data-k="postProcessHours" type="text" placeholder="Es. 1:30 / 2.00 / 0,5"
+          value="${escapeHtml(it.postProcessHours || "")}" />
+      </div>
+
+      <div class="field span2">
+        <label>Note lavorazioni (LED, lucidatura, assemblaggio...)</label>
+        <textarea data-k="postProcessNotes" rows="2" placeholder="Es. Installazione LED + lucidatura finale">${escapeHtml(it.postProcessNotes || "")}</textarea>
+      </div>
+
+      <div class="field">
         <label>Serie (sconto se ≥ soglia)</label>
         <div class="checkline">
           <input data-k="isSeries" type="checkbox" ${it.isSeries ? "checked" : ""} />
@@ -1766,6 +1794,8 @@ function readItemsFromDOM(){
       printHoursPerPiece: get("printHoursPerPiece").value.trim(),
       hasDesign,
       designHours: hasDesign ? get("designHours").value.trim() : "0:00",
+      postProcessHours: get("postProcessHours").value.trim(),
+      postProcessNotes: get("postProcessNotes").value.trim(),
       isSeries: get("isSeries").checked,
       materialOverrideOn,
       materialEurPerGram: materialOverrideOn ? num(get("materialEurPerGram").value, state.config.materialEurPerGram) : state.config.materialEurPerGram
@@ -2644,16 +2674,18 @@ function buildPrint() {
   ui.p_sumMat.textContent = eur(s.sumMat);
   ui.p_sumPrint.textContent = eur(s.sumPrint);
   ui.p_sumDesign.textContent = eur(s.sumDesign);
+  ui.p_sumPostProcess.textContent = eur(s.sumPostProcess);
   ui.p_sumDiscount.textContent = "- " + eur(s.sumDiscount);
   ui.p_sumSetup.textContent = eur(s.setupApplied);
   ui.p_sumMargin.textContent = eur(s.sumMargin);
+  if(ui.p_rowPostProcess) ui.p_rowPostProcess.style.display = s.sumPostProcess > 0 ? "" : "none";
   if(ui.p_rowDiscount) ui.p_rowDiscount.style.display = pdf.showDiscount ? "" : "none";
   if(ui.p_rowSetup) ui.p_rowSetup.style.display = pdf.showSetup ? "" : "none";
   if(ui.p_rowMargin) ui.p_rowMargin.style.display = pdf.showMargin ? "" : "none";
   ui.p_total.textContent = eur(s.total);
 
   if(pdf.showBaseCosts){
-    ui.printFoot.textContent = `Costi base: materiale ${fmtComma(state.config.materialEurPerGram)} €/g — macchina ${fmtComma(state.config.machineEurPerHour)} €/h — design ${fmtComma(state.config.designEurPerHour)} €/h — setup ${fmtComma(state.config.machineSetupFee)} € — sconto serie ${Math.round(state.config.seriesDiscountPct*100)}% (soglia ${state.config.seriesThresholdQty}).`;
+    ui.printFoot.textContent = `Costi base: materiale ${fmtComma(state.config.materialEurPerGram)} €/g — macchina ${fmtComma(state.config.machineEurPerHour)} €/h — design ${fmtComma(state.config.designEurPerHour)} €/h — post-produzione ${fmtComma(state.config.postProcessEurPerHour || 15)} €/h — setup ${fmtComma(state.config.machineSetupFee)} € — sconto serie ${Math.round(state.config.seriesDiscountPct*100)}% (soglia ${state.config.seriesThresholdQty}).`;
     ui.printFoot.style.display = "";
   }else{
     ui.printFoot.textContent = "";
@@ -2675,6 +2707,8 @@ ui.addItem.addEventListener("click", ()=>{
     printHoursPerPiece: "",
     hasDesign: false,
     designHours: "",
+    postProcessHours: "",
+    postProcessNotes: "",
     isSeries: false,
     materialOverrideOn: false,
     materialEurPerGram: state.config.materialEurPerGram
@@ -3373,12 +3407,12 @@ if(ui.themeSelect){
 
 // Global listeners (top config)
 document.addEventListener("input", (e)=>{
-  if(e.target.matches("#client,#setupMode,#cfg_material,#cfg_machine,#cfg_design,#cfg_setup,#cfg_discount,#cfg_threshold,#gA_print,#gA_design,#gA_margin,#gB_print,#gB_design,#gB_margin,#gC_print,#gC_design,#gC_margin,#pdfShowGrams,#pdfShowHours,#pdfShowSetup,#pdfShowDiscount,#pdfShowMargin,#pdfShowBaseCosts")){
+  if(e.target.matches("#client,#setupMode,#cfg_material,#cfg_machine,#cfg_design,#cfg_postProcess,#cfg_setup,#cfg_discount,#cfg_threshold,#gA_print,#gA_design,#gA_margin,#gB_print,#gB_design,#gB_margin,#gC_print,#gC_design,#gC_margin,#pdfShowGrams,#pdfShowHours,#pdfShowSetup,#pdfShowDiscount,#pdfShowMargin,#pdfShowBaseCosts")){
     recalcAndSave();
   }
 });
 document.addEventListener("change", (e)=>{
-  if(e.target.matches("#client,#setupMode,#cfg_material,#cfg_machine,#cfg_design,#cfg_setup,#cfg_discount,#cfg_threshold,#gA_print,#gA_design,#gA_margin,#gB_print,#gB_design,#gB_margin,#gC_print,#gC_design,#gC_margin,#pdfShowGrams,#pdfShowHours,#pdfShowSetup,#pdfShowDiscount,#pdfShowMargin,#pdfShowBaseCosts")){
+  if(e.target.matches("#client,#setupMode,#cfg_material,#cfg_machine,#cfg_design,#cfg_postProcess,#cfg_setup,#cfg_discount,#cfg_threshold,#gA_print,#gA_design,#gA_margin,#gB_print,#gB_design,#gB_margin,#gC_print,#gC_design,#gC_margin,#pdfShowGrams,#pdfShowHours,#pdfShowSetup,#pdfShowDiscount,#pdfShowMargin,#pdfShowBaseCosts")){
     recalcAndSave();
   }
 });
