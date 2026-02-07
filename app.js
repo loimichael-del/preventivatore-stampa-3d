@@ -3358,40 +3358,6 @@ ui.items.addEventListener("input", (e)=>{
 });
 ui.items.addEventListener("change", (e)=>{
   if(e.target.matches("input,select")) recalcAndSave();
-  if(e.target.matches("input[data-k='imageFile']")){
-    const input = e.target;
-    const file = input.files?.[0];
-    if(!file) {
-      console.log("❌ No file selected");
-      return;
-    }
-    console.log("📸 File selected for item image:", file.name);
-    const wrap = input.closest(".item");
-    const id = wrap?.getAttribute("data-id");
-    if(!id) {
-      console.log("❌ Could not find item ID");
-      return;
-    }
-    console.log("✅ Item ID found:", id);
-    ui.note.innerHTML = `<span class="mini">Caricamento immagine...</span>`;
-    uploadItemImage(file).then((url)=>{
-      readItemsFromDOM();
-      const idx = state.items.findIndex(x=>x.id===id);
-      if(idx === -1) {
-        console.log("❌ Item not found after upload");
-        return;
-      }
-      state.items[idx].imageUrl = url;
-      console.log("✅ Item updated with image URL");
-      saveState(state);
-      renderItems();
-      render();
-      ui.note.innerHTML = `<span class="ok">✅ Immagine caricata e salvata.</span>`;
-    }).catch((err)=>{
-      console.error("❌ Upload error:", err);
-      ui.note.innerHTML = `<span class="warn">Errore upload immagine: ${escapeHtml(err.message || "")}</span>`;
-    });
-  }
 });
 ui.items.addEventListener("click", (e)=>{
   const btn = e.target.closest("button[data-act]");
