@@ -2038,19 +2038,23 @@ function calcReport(){
     `;
   }
 
-  renderReportChart(byMonth);
+  renderReportChartStatus({ paid, pending, draft });
   return { rows, total, count, paid, pending, draft, byMonth };
 }
 
-function renderReportChart(byMonth){
+function renderReportChartStatus(statusTotals){
   if(!ui.reportChart) return;
   const ctx = ui.reportChart.getContext("2d");
   if(!ctx) return;
-  const entries = Array.from(byMonth.entries()).sort((a,b)=> a[0].localeCompare(b[0]));
+  const entries = [
+    ["Saldate", Number(statusTotals?.paid || 0), "#10b981"],
+    ["In sospeso", Number(statusTotals?.pending || 0), "#f59e0b"],
+    ["Da confermare", Number(statusTotals?.draft || 0), "#94a3b8"]
+  ];
 
   // Clear
   ctx.clearRect(0,0,ui.reportChart.width, ui.reportChart.height);
-  if(entries.length === 0){
+  if(entries.every(e => e[1] === 0)){
     ctx.fillStyle = "#9ca3af";
     ctx.font = "12px system-ui";
     ctx.fillText("Nessun dato", 10, 20);
@@ -2060,7 +2064,7 @@ function renderReportChart(byMonth){
   const w = ui.reportChart.width;
   const h = ui.reportChart.height;
   const padding = 30;
-  const barW = Math.max(20, (w - padding*2) / entries.length - 8);
+  const barW = Math.max(30, (w - padding*2) / entries.length - 16);
   const maxVal = Math.max(...entries.map(e=>e[1])) || 1;
 
   ctx.strokeStyle = "#e5e7eb";
@@ -2070,15 +2074,17 @@ function renderReportChart(byMonth){
   ctx.stroke();
 
   entries.forEach((e, i)=>{
+    const label = e[0];
     const val = e[1];
-    const x = padding + i * (barW + 8);
+    const color = e[2];
+    const x = padding + i * (barW + 16);
     const barH = (h - padding*2) * (val / maxVal);
     const y = h - padding - barH;
-    ctx.fillStyle = "#111827";
+    ctx.fillStyle = color;
     ctx.fillRect(x, y, barW, barH);
     ctx.fillStyle = "#6b7280";
     ctx.font = "10px system-ui";
-    ctx.fillText(e[0].slice(5), x, h - 10);
+    ctx.fillText(label, x, h - 10);
   });
 }
 
