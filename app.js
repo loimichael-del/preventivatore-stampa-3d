@@ -1468,6 +1468,7 @@ const ui = {
   printHead: $("printHead"),
   printMeta: $("printMeta"),
   printItems: $("printItems"),
+  printItemsTotals: $("printItemsTotals"),
   p_sumMat: $("p_sumMat"),
   p_sumPrint: $("p_sumPrint"),
   p_sumDesign: $("p_sumDesign"),
@@ -2609,6 +2610,36 @@ function buildPrint() {
   ui.printItems.innerHTML = o.itemQuotes.map(x=>{
     return `<tr>${cols.map(c=>`<td${c.className?` class="${c.className}"`:""}>${c.render(x)}</td>`).join("")}</tr>`;
   }).join("");
+
+  // Calcola totali per la riga di riepilogo
+  let totalQty = 0;
+  let totalGrams = 0;
+  let totalPrintHours = 0;
+  let totalDesignHours = 0;
+  let totalPrice = 0;
+
+  o.itemQuotes.forEach(x => {
+    totalQty += x.q.qty;
+    totalGrams += x.q.grams * x.q.qty;
+    totalPrintHours += x.q.printHours * x.q.qty;
+    totalDesignHours += x.q.designHours;
+    totalPrice += x.q.itemTotal;
+  });
+
+  // Aggiungi riga totali
+  if(ui.printItemsTotals){
+    const totalCells = [];
+    totalCells.push(`<td colspan="2" style="font-weight:600; text-align:right;">TOTALI</td>`);
+    totalCells.push(`<td class="num" style="font-weight:600;">${totalQty}</td>`);
+    if(pdf.showGrams) totalCells.push(`<td class="num" style="font-weight:600;">${round2(totalGrams)}</td>`);
+    if(pdf.showHours){
+      totalCells.push(`<td class="num" style="font-weight:600;">${round2(totalPrintHours)}</td>`);
+      totalCells.push(`<td class="num" style="font-weight:600;">${round2(totalDesignHours)}</td>`);
+    }
+    totalCells.push(`<td class="num"></td>`); // Prezzo unitario vuoto
+    totalCells.push(`<td class="num" style="font-weight:600;">${eur(totalPrice)}</td>`);
+    ui.printItemsTotals.innerHTML = `<tr style="border-top: 2px solid #333;">${totalCells.join("")}</tr>`;
+  }
 
   ui.p_sumMat.textContent = eur(s.sumMat);
   ui.p_sumPrint.textContent = eur(s.sumPrint);
