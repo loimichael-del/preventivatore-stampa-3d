@@ -120,6 +120,19 @@ body[data-theme="dark"] .btn-ghost:hover{
   border-color:#2b3b55;
 }
 
+body[data-theme="dark"] .report{
+  background:#0b1220;
+  border-color:#1f2937;
+}
+body[data-theme="dark"] .report .kpi-box{
+  background:#0f172a;
+  border-color:#1f2937;
+}
+body[data-theme="dark"] #reportChart{
+  background:#0b1220;
+  border-color:#1f2937;
+}
+
 body[data-theme="dark"] .checkline{
   background:var(--bg);
   border-color:#1f2937;
