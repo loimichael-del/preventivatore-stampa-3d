@@ -64,7 +64,7 @@ body[data-theme="dark"] button:hover{
   border-color:#2b3b55;
 }
 
-body[data-theme="dark"] .actions button{
+body[data-theme="dark"] .actions button:not(.primary){
   background:#0f1b33;
   border-color:#2b3b55;
 }
