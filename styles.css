@@ -320,9 +320,9 @@ main{
 .accordion[open] summary::after{ transform: rotate(90deg); }
 .accordion-body{ margin-top:10px; }
 
-.grid{ display:grid; gap:12px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.grid2{ display:grid; gap:12px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.grid3{ display:grid; gap:12px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+.grid{ display:grid; gap:12px; row-gap:16px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.grid2{ display:grid; gap:12px; row-gap:16px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.grid3{ display:grid; gap:12px; row-gap:16px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
 @media (max-width: 980px){ .grid, .grid2, .grid3{ grid-template-columns: 1fr; } }
 
 .field{ display:flex; flex-direction:column; gap:6px; }
