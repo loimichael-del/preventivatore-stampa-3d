@@ -355,6 +355,14 @@ main{
   gap:8px;
   flex-wrap:wrap;
 }
+.summary-head{
+  align-items:flex-start;
+}
+.summary-actions{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+}
 
 .accordion{
   border:1px solid var(--b);
