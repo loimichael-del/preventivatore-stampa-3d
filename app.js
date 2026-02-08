@@ -2584,8 +2584,8 @@ function render(){
   const hasAnyZeroDesignHours = state.items.some(it => it.hasDesign !== false && parseHoursSmart(it.designHours, 0) === 0);
   
   const warningsGlobal = [];
-  if (hasAnyZeroPrintHours) warningsGlobal.push(`<span class="warn">⚠ Almeno un articolo ha ore stampa=0</span>`);
-  if (hasAnyZeroDesignHours) warningsGlobal.push(`<span class="warn">⚠ Almeno un articolo ha design=SI ma ore=0</span>`);
+  if (hasAnyZeroPrintHours) warningsGlobal.push(`<span class="warn">⚠ Ore stampa a 0 in almeno un articolo. Inserisci un valore (es. 0:40).</span>`);
+  if (hasAnyZeroDesignHours) warningsGlobal.push(`<span class="warn">⚠ Design=SI ma ore=0 in almeno un articolo. Se il file è pronto imposta Design=NO.</span>`);
   const warnGlobalHTML = warningsGlobal.length > 0 ? `<br>${warningsGlobal.join("<br>")}` : "";
   
   ui.note.innerHTML = `
@@ -2629,13 +2629,13 @@ function render(){
     // Validazioni leggere
     let validations = [];
     if (uiHasDesign && q.designHours === 0) {
-      validations.push(`<span class="warn">⚠ Design=SI ma ore=0 → costo design 0€</span>`);
+      validations.push(`<span class="warn">⚠ Design=SI ma ore=0 → costo design 0€. Se il file è pronto, imposta Design=NO.</span>`);
     }
     if (q.printHours === 0) {
-      validations.push(`<span class="warn">⚠ Ore stampa=0 → controlla il valore</span>`);
+      validations.push(`<span class="warn">⚠ Ore stampa=0 → il costo stampa è 0€</span>`);
     }
     if (q.qty === 0) {
-      validations.push(`<span class="warn">⚠ Quantità=0</span>`);
+      validations.push(`<span class="warn">⚠ Quantità=0 → riga non valorizzata</span>`);
     }
     const validationHTML = validations.length > 0 ? `<div style="margin-top:8px;">${validations.join("<br>")}</div>` : "";
 
