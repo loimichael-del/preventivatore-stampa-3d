@@ -459,6 +459,24 @@ button[data-itemview="delete"]:hover,
 .ok{ color:var(--success); }
 hr{ border:none; border-top:1px solid var(--b); margin:12px 0; }
 
+.auth-message{
+  margin-top:12px;
+  padding:10px 12px;
+  border-radius:8px;
+  font-size:14px;
+  background:#fee;
+  color:#b91c1c;
+  border:1px solid #fecaca;
+}
+.auth-message.success{
+  background:#ecfdf5;
+  color:#065f46;
+  border-color:#bbf7d0;
+}
+.auth-message button{
+  margin-top:8px;
+}
+
 .kpi{ display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px; }
 @media (max-width: 980px){ .kpi{ grid-template-columns: 1fr; } }
 .kpi .box{ border:1px solid var(--b); border-radius:var(--radius); padding:12px; background:var(--soft); }

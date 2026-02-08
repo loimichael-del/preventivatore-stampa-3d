@@ -329,11 +329,8 @@ async function authSignUp() {
         console.error("Profile creation error:", profileError);
       }
       
-      showAuthError("✅ Account creato! Controlla la tua email per confermare l'indirizzo. Una volta confermato potrai accedere.");
-      // Aspetta 2 secondi prima di fare toggle così vede il messaggio
-      setTimeout(() => {
-        toggleAuthForms();
-      }, 2000);
+      showAuthMessage("✅ Account creato! Controlla la tua email per confermare l'indirizzo (anche in Spam). Dopo la conferma potrai accedere.", "success", { showRefresh: true });
+      // Lascia il messaggio visibile finché l'utente non decide
     }
   } catch (err) {
     console.error("SignUp exception:", err);
@@ -458,15 +455,31 @@ async function authLogout() {
   }
 }
 
-function showAuthError(message) {
+function showAuthMessage(message, type = "error", opts = {}) {
   const errorEl = $("authError");
-  errorEl.textContent = message;
+  const showRefresh = !!opts.showRefresh;
+  errorEl.classList.toggle("success", type === "success");
+  if (showRefresh) {
+    errorEl.innerHTML = `
+      <div>${escapeHtml(message)}</div>
+      <button type="button" class="primary" id="authRefreshBtn">Ho confermato, ricarica</button>
+    `;
+    const btn = $("authRefreshBtn");
+    if (btn) btn.onclick = () => window.location.reload();
+  } else {
+    errorEl.textContent = message;
+  }
   errorEl.style.display = "block";
+}
+
+function showAuthError(message) {
+  showAuthMessage(message, "error");
 }
 
 function clearAuthError() {
   const errorEl = $("authError");
   errorEl.textContent = "";
+  errorEl.classList.remove("success");
   errorEl.style.display = "none";
 }
 
