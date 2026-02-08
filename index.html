@@ -100,7 +100,14 @@
   <section id="view-main" class="view view-active view-main">
   <!-- LEFT -->
   <section class="card left-panel">
-    <h2>Commessa</h2>
+    <div class="card-head">
+      <h2>Commessa</h2>
+      <div class="commessa-actions">
+        <button id="reset">Reset</button>
+        <button id="exportPdf">Esporta PDF</button>
+        <button class="primary" id="saveQuote">Salva preventivo</button>
+      </div>
+    </div>
     <div class="grid2">
       <div class="field">
         <label for="client">Cliente</label>
@@ -123,12 +130,7 @@
       </div>
     </div>
 
-    <div class="actions">
-      <button class="primary" id="addItem">+ Aggiungi articolo</button>
-      <button id="reset">Reset</button>
-      <button id="exportPdf">Esporta PDF</button>
-      <button id="saveQuote">Salva preventivo</button>
-    </div>
+    <div class="actions"></div>
 
     <p class="note">
       "Per commessa" = una sola mandata. "Per articolo" = lavorazioni separate.
@@ -233,7 +235,10 @@
   <!-- CENTER -->
   <section class="center-panel">
     <div class="card">
-      <h2>Articoli</h2>
+      <div class="card-head">
+        <h2>Articoli</h2>
+        <button class="primary" id="addItem">+ Aggiungi articolo</button>
+      </div>
       <div id="items"></div>
     </div>
 
