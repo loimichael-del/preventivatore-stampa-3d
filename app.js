@@ -1501,6 +1501,8 @@ const ui = {
   printMeta: $("printMeta"),
   printItems: $("printItems"),
   printItemsTotals: $("printItemsTotals"),
+  printPostProcessBox: $("printPostProcessBox"),
+  printPostProcessList: $("printPostProcessList"),
   p_sumMat: $("p_sumMat"),
   p_sumPrint: $("p_sumPrint"),
   p_sumDesign: $("p_sumDesign"),
@@ -2682,14 +2684,6 @@ function buildPrint() {
     cols.push({ label: "Stampa (h/pezzo)", className: "num", render: (x)=> round2(x.q.printHours) });
     cols.push({ label: "Design (h tot)", className: "num", render: (x)=> round2(x.q.designHours) });
   }
-  const hasAnyPostNotes = o.itemQuotes.some(x => (x.raw?.postProcessNotes || "").trim().length > 0);
-  const hasAnyPostExtras = o.itemQuotes.some(x => Array.isArray(x.raw?.postProcessExtras) && x.raw.postProcessExtras.length > 0);
-  if(hasAnyPostNotes) cols.push({ label: "Post-produzione (note)", className: "", render: (x)=> escapeHtml((x.raw?.postProcessNotes || "").trim()) });
-  if(hasAnyPostExtras) cols.push({ label: "Extra post-prod.", className: "", render: (x)=> {
-    const extras = Array.isArray(x.raw?.postProcessExtras) ? x.raw.postProcessExtras : [];
-    if(!extras.length) return "";
-    return extras.map(ex => `${escapeHtml(ex?.name || "Extra")}: ${eur(num(ex?.price, 0))}`).join(", ");
-  }});
   cols.push({ label: "Prezzo unit.", className: "num", render: (x)=> eur(x.q.unitPrice) });
   cols.push({ label: "Totale riga", className: "num", render: (x)=> eur(x.q.itemTotal) });
 
@@ -2700,6 +2694,32 @@ function buildPrint() {
   ui.printItems.innerHTML = o.itemQuotes.map(x=>{
     return `<tr>${cols.map(c=>`<td${c.className?` class="${c.className}"`:""}>${c.render(x)}</td>`).join("")}</tr>`;
   }).join("");
+
+  const postLines = o.itemQuotes.map(x=>{
+    const notes = (x.raw?.postProcessNotes || "").trim();
+    const extras = Array.isArray(x.raw?.postProcessExtras) ? x.raw.postProcessExtras : [];
+    if(!notes && extras.length === 0) return "";
+    const extrasText = extras.length
+      ? extras.map(ex => `${escapeHtml(ex?.name || "Extra")}: ${eur(num(ex?.price, 0))}`).join(", ")
+      : "";
+    return `
+      <div style="margin-bottom:8px;">
+        <b>${escapeHtml(x.raw?.name || "Articolo")}</b>
+        ${notes ? `<div>${escapeHtml(notes)}</div>` : ""}
+        ${extrasText ? `<div class=\"mini\">Extra: ${extrasText}</div>` : ""}
+      </div>
+    `;
+  }).filter(Boolean).join("");
+
+  if(ui.printPostProcessBox && ui.printPostProcessList){
+    if(postLines){
+      ui.printPostProcessBox.style.display = "";
+      ui.printPostProcessList.innerHTML = postLines;
+    } else {
+      ui.printPostProcessBox.style.display = "none";
+      ui.printPostProcessList.innerHTML = "";
+    }
+  }
 
   // Calcola totali per la riga di riepilogo
   let totalQty = 0;
