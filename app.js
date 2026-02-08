@@ -2852,10 +2852,16 @@ if(ui.saveQuote){
       console.log("🔴 No currentUser - sync skipped");
     }
 
-    // Prepara un nuovo codice per il prossimo preventivo (evita sovrascritture)
-    state.order.quoteId = generateQuoteId();
+    // Auto-reset commessa dopo salvataggio (mantiene le impostazioni)
+    state = {
+      ...state,
+      order: structuredClone(DEFAULTS.order),
+      items: structuredClone(DEFAULTS.items)
+    };
     saveState(state);
     bindTop();
+    renderItems();
+    render();
   });
 }
 
