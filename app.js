@@ -2821,7 +2821,7 @@ ui.copy.addEventListener("click", async ()=>{
   const s = o.sums;
 
   const lines = [];
-  lines.push(`Preventivo stampa 3D — Cliente: ${state.order.client || "-"}`);
+  lines.push(`Price3D — Cliente: ${state.order.client || "-"}`);
   lines.push(`Data: ${nowStr()}`);
   lines.push(`Setup: ${state.order.setupMode === "ITEM" ? "per articolo" : "per commessa"} (${round2(s.setupApplied)}€)`);
   lines.push(`Articoli:`);
