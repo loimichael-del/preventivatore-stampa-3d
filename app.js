@@ -2682,6 +2682,14 @@ function buildPrint() {
     cols.push({ label: "Stampa (h/pezzo)", className: "num", render: (x)=> round2(x.q.printHours) });
     cols.push({ label: "Design (h tot)", className: "num", render: (x)=> round2(x.q.designHours) });
   }
+  const hasAnyPostNotes = o.itemQuotes.some(x => (x.raw?.postProcessNotes || "").trim().length > 0);
+  const hasAnyPostExtras = o.itemQuotes.some(x => Array.isArray(x.raw?.postProcessExtras) && x.raw.postProcessExtras.length > 0);
+  if(hasAnyPostNotes) cols.push({ label: "Post-produzione (note)", className: "", render: (x)=> escapeHtml((x.raw?.postProcessNotes || "").trim()) });
+  if(hasAnyPostExtras) cols.push({ label: "Extra post-prod.", className: "", render: (x)=> {
+    const extras = Array.isArray(x.raw?.postProcessExtras) ? x.raw.postProcessExtras : [];
+    if(!extras.length) return "";
+    return extras.map(ex => `${escapeHtml(ex?.name || "Extra")}: ${eur(num(ex?.price, 0))}`).join(", ");
+  }});
   cols.push({ label: "Prezzo unit.", className: "num", render: (x)=> eur(x.q.unitPrice) });
   cols.push({ label: "Totale riga", className: "num", render: (x)=> eur(x.q.itemTotal) });
 
